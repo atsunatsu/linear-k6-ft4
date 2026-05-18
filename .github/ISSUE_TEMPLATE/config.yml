@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Tester Quick Start / 测试者快速上手
+    url: https://github.com/atsunatsu/linear-k6-ft4/blob/main/docs/TESTER_QUICKSTART.md
+    about: Read this before opening a tester issue.
+  - name: Serial Capture Guide / 串口抓包指南
+    url: https://github.com/atsunatsu/linear-k6-ft4/blob/main/docs/SERIAL_CAPTURE_GUIDE.md
+    about: Follow the capture workflow before submitting a protocol report.
