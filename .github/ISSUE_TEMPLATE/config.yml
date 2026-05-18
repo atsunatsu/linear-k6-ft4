@@ -2,7 +2,10 @@ blank_issues_enabled: false
 contact_links:
   - name: Tester Quick Start / 测试者快速上手
     url: https://github.com/atsunatsu/linear-k6-ft4/blob/main/docs/TESTER_QUICKSTART.md
-    about: Read this before opening a tester issue.
-  - name: Serial Capture Guide / 串口抓包指南
+    about: Start here if you only need to find the WSJT-X COM and DigiManager COM.
+  - name: Serial Capture Guide / 串口抓包手册
     url: https://github.com/atsunatsu/linear-k6-ft4/blob/main/docs/SERIAL_CAPTURE_GUIDE.md
-    about: Follow the capture workflow before submitting a protocol report.
+    about: Read this only after the two COM ports are already confirmed.
+  - name: COM Topology Help Template / COM 拓扑协助模板
+    url: https://github.com/atsunatsu/linear-k6-ft4/blob/main/docs/COM_TOPOLOGY_HELP_TEMPLATE.md
+    about: Use this if you are still stuck at the screenshot and COM-confirmation stage.

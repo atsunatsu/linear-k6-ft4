@@ -1,74 +1,137 @@
-# 串口抓包指南 / Serial Capture Guide
+# 串口抓包手册 / Serial Capture Guide
 
-## 目的 / Purpose
+## 这份手册是给谁的 / Who This Guide Is For
 
-这份指南帮助你在**不理解协议细节**的前提下，先把 `WSJT-X ↔ DigiManager` 的双向串口数据完整记录下来。  
-This guide helps you capture the full bidirectional `WSJT-X ↔ DigiManager` serial traffic **without needing to understand the protocol first**.
+这份手册写给“会操作 Windows 软件，但不懂串口协议”的测试者。  
+This guide is written for testers who can operate Windows software but do not understand serial protocols.
 
-目标不是立即逆向协议，而是先回答这些问题：  
-The goal is not to reverse-engineer the protocol immediately. The first goal is to answer:
+你不需要先搞懂协议细节。  
+You do not need to understand the protocol details first.
 
-- 哪个 COM 给 `WSJT-X` 用  
-  Which COM port is used by `WSJT-X`
-- 哪个 COM 给 `DigiManager` 用  
-  Which COM port is used by `DigiManager`
-- 它们是不是虚拟串口对  
-  Whether they are a virtual COM pair
-- 串口参数是什么  
-  What the serial parameters are
-- 发射、改频、PTT、模式切换时，双向数据长什么样  
-  What the bidirectional traffic looks like during TX, retuning, PTT, and mode changes
+## 最小成功标准 / Minimum Success Standard
 
-## 第一步：盘清 COM 拓扑 / Step 1: Map the COM topology
+请先记住一件事：  
+Please remember one thing first:
 
-先运行串口拓扑清单脚本：  
-Run the topology worksheet script first:
+**如果你只完成了“找到 `WSJT-X` 的 COM 和 `DigiManager` 的 COM，并把它们回传”，这已经是有价值的结果。**  
+**If all you complete is finding the `WSJT-X` COM and the `DigiManager` COM and sending them back, that is already valuable.**
 
-```powershell
-python scripts/list_serial_topology.py
+第一次测试不要求你必须完成完整抓包。  
+Your first test does not have to finish a full capture.
+
+## 阶段 A：先不要抓包，只确认 COM / Phase A: Do Not Capture Yet, Confirm The COM Ports First
+
+### A1. 你现在要确认什么 / What You Need To Confirm
+
+你现在只需要确认这两行：  
+Right now you only need to confirm these two lines:
+
+```text
+WSJT-X = COM?
+DigiManager = COM?
 ```
 
-它会：
+### A2. 去哪里看 / Where To Look
 
-- 枚举本机可见 COM 口
-- 生成一个可手工填写的 CSV 模板
+请按这个顺序看：  
+Please check in this order:
 
-It will:
+1. `WSJT-X` 设置页  
+   `WSJT-X` settings page
+2. `DigiManager` 设置页  
+   `DigiManager` settings page
+3. Windows `设备管理器 -> Ports (COM & LPT)`  
+   Windows `Device Manager -> Ports (COM & LPT)`
 
-- enumerate visible local COM ports
-- generate a CSV worksheet you can fill in manually
+详细动作已经写在这里：  
+The detailed click-by-click actions are here:
 
-默认输出文件：  
-Default output file:
+[docs/TESTER_QUICKSTART.md](/F:/Codex/CEC固件改装FT4/docs/TESTER_QUICKSTART.md)
 
-[logs/serial-topology-template.csv](/F:/Codex/CEC固件改装FT4/logs/serial-topology-template.csv)
+### A3. 什么时候先停住 / When You Should Stop Here
 
-你需要结合这些地方把表补完整：  
-Complete the worksheet using:
+如果出现下面任意一种情况，请先停住，不要继续插代理：  
+If any of the following is true, stop here and do not insert the proxy yet:
 
-- `WSJT-X` 的 CAT / rig 设置界面  
-  `WSJT-X` CAT / rig settings
-- `DigiManager` 的串口设置界面  
-  `DigiManager` serial settings
-- Windows 设备管理器里的 `Ports (COM & LPT)`  
-  Windows Device Manager `Ports (COM & LPT)`
-- 你当前使用的虚拟串口工具  
-  Your current virtual COM utility
+- 你不知道 `WSJT-X` 正在用哪个 `COM`  
+  You do not know which `COM` `WSJT-X` is using
+- 你不知道 `DigiManager` 正在用哪个 `COM`  
+  You do not know which `COM` `DigiManager` is using
+- 你分不清哪个是虚拟串口，哪个是别的设备  
+  You cannot tell which ports are virtual COM ports and which belong to something else
+- 你不确定当前固定频点链路是不是本来就能正常工作  
+  You are not sure whether the original fixed-frequency chain already works
 
-如果你完全不确定现在谁连着谁，请先停在这一步，不要急着插代理。  
-If you are not sure who is connected to what, stop here first and do not insert the proxy yet.
+### A4. 阶段 A 可以回传什么 / What You Can Send Back In Phase A
 
-## 第二步：插入串口代理 / Step 2: Insert the capture proxy
+如果你只能做到阶段 A，请回传下面任意一种：  
+If you can only reach Phase A, send back either of these:
 
-当你知道 `WSJT-X` 和 `DigiManager` 原本各自连接的 COM 口后，把中间链路改成：  
-Once you know the original COM ports used by `WSJT-X` and `DigiManager`, change the wiring to:
+1. 两行文字  
+   Two text lines
+
+```text
+WSJT-X = COM?
+DigiManager = COM?
+```
+
+2. 三张截图  
+   Three screenshots
+
+- `WSJT-X` 设置页  
+  `WSJT-X` settings page
+- `DigiManager` 设置页  
+  `DigiManager` settings page
+- `设备管理器 -> Ports (COM & LPT)`  
+  `Device Manager -> Ports (COM & LPT)`
+
+你也可以直接使用这个模板：  
+You can also use this template directly:
+
+[docs/COM_TOPOLOGY_HELP_TEMPLATE.md](/F:/Codex/CEC固件改装FT4/docs/COM_TOPOLOGY_HELP_TEMPLATE.md)
+
+## 阶段 B：确认 COM 后再抓包 / Phase B: Capture Only After COM Is Confirmed
+
+### B1. 先理解这 2 个名字 / First Understand These 2 Names
+
+- `COM_A`：代理靠近 `WSJT-X` 的那一侧  
+  `COM_A`: the side of the proxy that faces `WSJT-X`
+- `COM_B`：代理靠近 `DigiManager` 的那一侧  
+  `COM_B`: the side of the proxy that faces `DigiManager`
+
+你不需要先理解更深的拓扑，只要知道：  
+You do not need deeper topology knowledge yet. Just remember:
 
 ```text
 WSJT-X -> COM_A -> capture-proxy -> COM_B -> DigiManager
 ```
 
-然后运行抓包代理：  
-Then run the capture proxy:
+### B2. 为什么代理要插在中间 / Why The Proxy Goes In The Middle
+
+我们不是要改业务逻辑。  
+We are not trying to change the behavior.
+
+我们只是把原来的一根线中间加一个“记录员”，把双向串口数据记下来。  
+We are only adding a “recorder” in the middle of the original link so both directions are logged.
+
+### B3. 抓包前先做一个表 / Generate The Topology Worksheet First
+
+```powershell
+python scripts/list_serial_topology.py
+```
+
+它会生成：  
+It will generate:
+
+[logs/serial-topology-template.csv](/F:/Codex/CEC固件改装FT4/logs/serial-topology-template.csv)
+
+如果你愿意，先把它填一部分再抓包会更好。  
+If you can, filling part of it before capture is even better.
+
+### B4. 抓包命令怎么换成真实 COM / Replace The Example Ports With Real COM Ports
+
+命令示例：  
+Example command:
 
 ```powershell
 python scripts/serial_capture_proxy.py ^
@@ -79,156 +142,107 @@ python scripts/serial_capture_proxy.py ^
   --log-path logs/serial-capture.jsonl
 ```
 
-常用参数：  
-Common parameters:
+你要改的只是这几项：  
+You only need to replace these parts:
 
-- `--wsjtx-port`：代理面向 `WSJT-X` 的 COM  
-  The COM facing `WSJT-X`
-- `--digimanager-port`：代理面向 `DigiManager` 的 COM  
-  The COM facing `DigiManager`
-- `--baudrate`：串口波特率  
-  Serial baud rate
-- `--scenario`：本轮抓包的人类标签，例如 `startup`、`ptt_on`、`tx_retune`  
-  Human-readable label for this run, for example `startup`, `ptt_on`, or `tx_retune`
-- `--log-path`：JSONL 日志输出文件  
-  JSONL output file
+- `COM_A` 改成真实的前端 COM  
+  Replace `COM_A` with the real frontend COM
+- `COM_B` 改成真实的后端 COM  
+  Replace `COM_B` with the real backend COM
+- `9600` 改成你的实际波特率  
+  Replace `9600` with your actual baud rate
+- `startup` 改成当前场景名  
+  Replace `startup` with the scenario name you are capturing now
 
-## 第三步：按场景抓最小样本 / Step 3: Capture the minimum useful scenarios
+### B5. 每个 `--scenario` 什么时候用 / When To Use Each `--scenario`
 
-第一次抓包按这个顺序来：  
-For the first capture pass, use this order:
+第一次抓包，只抓最小场景集就够了：  
+For the first capture, only the minimum scenario set is needed:
 
-1. 软件启动并建立连接  
-   Startup and initial connection
-2. 空闲状态读频率或状态  
-   Idle state frequency/status reads
-3. 手工改一次频率  
+1. `startup`  
+   软件启动并连上串口  
+   Software starts and connects to the serial link
+2. `idle_read`  
+   空闲时读取频率或状态  
+   Idle frequency or status reads
+3. `set_freq`  
+   手工改一次频率  
    One manual frequency change
-4. 切一次模式  
+4. `mode_change`  
+   切一次模式  
    One mode change
-5. `PTT ON`  
-   `PTT ON`
-6. `PTT OFF`  
-   `PTT OFF`
-7. 发射过程中连续改几次频率  
-   Several retunes while transmitting
-8. 关闭软件或断开串口  
-   Shutdown or disconnect
-9. 故意做一个错误动作  
-   One intentional error case
+5. `ptt_on`  
+   按下发射  
+   Start transmit
+6. `ptt_off`  
+   停止发射  
+   Stop transmit
+7. `tx_retune`  
+   发射过程中连续改几次频率  
+   Retune several times while transmitting
 
-建议每个场景单独跑一轮，并修改 `--scenario` 标签。  
-It is recommended to run each scenario separately and change the `--scenario` label each time.
+### B6. 每跑完一轮要检查什么 / What To Check After Each Run
 
-推荐的场景标签 / Recommended scenario labels:
+每跑完一轮，请至少确认：  
+After each run, at minimum confirm:
 
-- `startup`
-- `idle_read`
-- `set_freq`
-- `mode_change`
-- `ptt_on`
-- `ptt_off`
-- `tx_retune`
-- `shutdown`
-- `error_case`
+- `logs/serial-capture.jsonl` 已经生成  
+  `logs/serial-capture.jsonl` exists
+- 这个文件不是空的  
+  The file is not empty
+- 这轮抓包用的 `--scenario` 是你当前实际做的动作  
+  The `--scenario` label matches what you actually did
 
-## 第四步：快速看抓包是不是像文本协议 / Step 4: Quickly inspect whether it looks text-based
-
-抓完以后先跑分析脚本：  
-After capturing, run the analyzer:
+### B7. 抓完后看一下摘要 / Read A Quick Summary After Capture
 
 ```powershell
 python scripts/analyze_capture.py logs/serial-capture.jsonl
 ```
 
-它会输出：  
-It prints:
+这一步不用你理解协议，只是帮你确认日志确实抓到了东西。  
+This step does not require protocol knowledge. It only helps confirm that the log actually captured something.
 
-- 记录数  
-  number of records
-- 双向方向统计  
-  direction counts
-- 场景统计  
-  scenario counts
-- 一个粗略的 `ascii_like_ratio`  
-  a rough `ascii_like_ratio`
-- 前几条样本  
-  the first sample records
+## 结果怎么回传 / How To Send Back The Results
 
-如果 `ascii_like_ratio` 很高，并且样本里能看出像 `F 145950000` 这种可读文本，就优先按文本协议分析。  
-If `ascii_like_ratio` is high and the samples look like readable commands such as `F 145950000`, start with a text-protocol hypothesis.
+### 只做到阶段 A / If You Only Reached Phase A
 
-## 抓包后要提交什么 / What To Submit After Capture
+请提交：  
+Please submit:
 
-请不要只发一份 `.jsonl` 文件就结束。最有用的提交包应同时包含：  
-Please do not send only a `.jsonl` file. The most useful submission bundle should include:
+- `WSJT-X = COM?`
+- `DigiManager = COM?`
+- 或者 3 张截图  
+  Or 3 screenshots
 
-1. 填写后的 COM 拓扑清单  
-   The completed COM topology worksheet
-2. 抓包日志 `logs/serial-capture.jsonl`  
-   The capture log `logs/serial-capture.jsonl`
-3. 分析脚本输出  
-   The analyzer output
-4. 一份文字说明  
-   A written report
+### 完成了阶段 B / If You Completed Phase B
 
-文字说明请按这个模板填写：  
-Use this template for the written report:
+请提交：  
+Please submit:
+
+- `serial-topology-template.csv`
+- `serial-capture.jsonl`
+- 分析脚本输出  
+  Analyzer output
+- 你的观察说明  
+  Your notes
+
+完整汇报模板在这里：  
+The full report template is here:
 
 [docs/CAPTURE_REPORT_TEMPLATE.md](/F:/Codex/CEC固件改装FT4/docs/CAPTURE_REPORT_TEMPLATE.md)
 
 ## 常见错误 / Common Mistakes
 
-- 不清楚 COM 拓扑就直接开始改线  
-  Rewiring before understanding the COM topology
-- 一口气抓很多场景，但没有换 `--scenario` 标签  
-  Capturing many scenarios at once without changing the `--scenario` label
-- 抓到了启动和 PTT，但漏掉“发射中连续改频”  
-  Capturing startup and PTT but missing in-TX retuning
-- 改动链路后没有确认原有工作链还能正常连通  
-  Failing to verify that the original working chain still connects after rewiring
+- 还没确认两个 `COM` 就急着插代理  
+  Inserting the proxy before confirming the two `COM` ports
+- 不确定原本链路是否工作就开始改线  
+  Rewiring before confirming the original chain works
+- 抓了很多动作，但没有换 `--scenario`  
+  Capturing many actions without changing `--scenario`
+- 只抓 `PTT ON/OFF`，没抓发射中的改频  
+  Capturing only `PTT ON/OFF` and missing retuning during TX
 
-## 日志格式 / Log Format
+## 一句话总结 / One-Sentence Summary
 
-每条 JSONL 记录固定包含：  
-Each JSONL record contains:
-
-- `timestamp_ms`
-- `direction`
-- `bytes_hex`
-- `bytes_ascii`
-- `scenario`
-- `port_name`
-
-这意味着抓包完成后，你可以先不懂协议，但已经拥有：
-
-- 可回放样本
-- 可检索样本
-- 可对照场景的样本
-
-This means that even before understanding the protocol, you already have:
-
-- replayable samples
-- searchable samples
-- scenario-tagged samples
-
-## 抓包后再做什么 / What comes next after capture
-
-拿到最小样本后，再回答这些问题：  
-After the minimum sample set is captured, answer:
-
-- 它是文本协议还是二进制协议  
-  Is it text or binary?
-- 报文是不是按行分隔  
-  Is it line-delimited?
-- 改频命令是什么  
-  What is the retune command?
-- PTT 命令是什么  
-  What is the PTT command?
-- 模式切换命令是什么  
-  What is the mode-switch command?
-- 发射中连续改频是如何体现的  
-  How is in-TX retuning represented?
-
-在这一步之前，不要写死 `sat-bridge` 的串口协议实现。  
-Do not hardcode the `sat-bridge` serial protocol implementation before this step.
+**先确认两个 COM；确认后再把代理插在中间抓包。**  
+**Confirm the two COM ports first; only then insert the proxy in the middle and capture.**

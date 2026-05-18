@@ -1,42 +1,45 @@
-# 抓包回报模板 / Capture Report Template
+# 抓包结果提交模板 / Capture Report Template
 
-把下面模板复制一份，按实际情况填写后发回。  
-Copy this template, fill it in with real data, and send it back.
+这个模板适合已经完成抓包的人。  
+This template is for people who already completed a capture.
 
-## 1. 测试人 / Tester
+## 1. 基本信息 / Basic Information
 
-- 姓名或昵称 / Name or nickname:
 - 测试日期 / Test date:
+- 测试者 / Tester:
 - 操作系统 / Operating system:
+- WSJT-X 版本 / WSJT-X version:
+- DigiManager 版本 / DigiManager version:
+- CEC/K5 固件版本 / CEC/K5 firmware version:
 
-## 2. 当前工作链路 / Current Working Chain
+## 2. 原始链路是否正常 / Was The Original Chain Working
 
-- `WSJT-X` 版本 / `WSJT-X` version:
-- `DigiManager` 版本 / `DigiManager` version:
-- `CEC/K5` 固件版本 / `CEC/K5` firmware version:
-- 当前这套链路是否原本可用 / Was the original chain working before capture:
+- 抓包前，固定频点链路是否正常工作？  
+  Was the original fixed-frequency chain working before capture?
+- 你的回答 / Your answer:
 
-## 3. COM 拓扑 / COM Topology
+## 3. COM 信息 / COM Information
 
-请附上填写后的 CSV，并在这里简述关键链路：  
-Attach the completed CSV and summarize the important chain here:
+```text
+WSJT-X = COM?
+DigiManager = COM?
+```
 
-- `WSJT-X` 使用的 COM / COM used by `WSJT-X`:
-- `DigiManager` 使用的 COM / COM used by `DigiManager`:
 - 虚拟串口工具 / Virtual COM tool:
 - 波特率 / Baud rate:
-- 其他串口参数 / Other serial parameters:
+- 其他串口参数 / Other serial settings:
 
-## 4. 代理插入后的链路 / Topology After Proxy Insertion
+## 4. 抓包后链路 / Topology After Proxy Insertion
 
-- `COM_A`:
-- `COM_B`:
-- 抓包代理命令 / Capture proxy command:
+```text
+WSJT-X -> COM_A -> capture-proxy -> COM_B -> DigiManager
+```
 
-## 5. 实际抓到的场景 / Scenarios Captured
+- COM_A =
+- COM_B =
+- 你实际运行的抓包命令 / The capture command you actually ran:
 
-请逐项勾选并补充说明：  
-Check each scenario and add notes:
+## 5. 抓了哪些场景 / Which Scenarios Were Captured
 
 - [ ] `startup`
 - [ ] `idle_read`
@@ -45,30 +48,27 @@ Check each scenario and add notes:
 - [ ] `ptt_on`
 - [ ] `ptt_off`
 - [ ] `tx_retune`
-- [ ] `shutdown`
-- [ ] `error_case`
 
-补充说明 / Notes:
+## 6. 附件 / Files Attached
 
-## 6. 输出文件 / Output Files
+- [ ] `serial-topology-template.csv`
+- [ ] `serial-capture.jsonl`
+- [ ] analyzer output / 分析脚本输出
 
-- COM 拓扑清单 / COM topology worksheet:
-- 抓包日志 / Capture log:
-- 分析脚本输出 / Analyzer output:
+如果文件太大，请说明你是怎么分享的。  
+If a file is too large, explain how you shared it.
 
 ## 7. 你的观察 / Your Observations
 
-请尽量用自然语言描述你看到的现象：  
-Describe what you observed in plain language:
+- 哪一步最容易失败？  
+  Which step failed most easily?
+- 发射中的改频是否明显发生了？  
+  Did retuning during TX clearly happen?
+- 有没有弹窗、超时、断开？  
+  Any popups, timeouts, or disconnects?
+- 抓包看起来更像文本还是二进制？  
+  Did the traffic look more like text or binary?
 
-- 哪一步最容易失败 / Which step failed most easily:
-- 发射中改频是否明显发生 / Whether in-TX retuning clearly happened:
-- 有没有看到错误弹窗、超时或掉线 / Any error dialogs, timeouts, or disconnects:
-- 如果你看了抓包文本，它更像文本协议还是二进制协议 / If you inspected the capture, did it look text-like or binary:
-
-## 8. 总结 / Summary
-
-一句话总结这次抓包：  
-One-sentence summary of this capture:
+## 8. 一句话总结 / One-Sentence Conclusion
 
 -  

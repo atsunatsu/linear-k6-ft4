@@ -1,77 +1,129 @@
-# linear-k6-ft4 / sat-bridge
+# linear-k6-ft4
 
-中文与 English 文档并排提供。后续项目文档默认保持中英双语。  
-Chinese and English documentation are provided side by side. Future project documentation should stay bilingual by default.
+中文和 English 并排提供。后续项目文档默认保持中英双语。  
+Chinese and English are provided side by side. Future project documentation should stay bilingual by default.
 
-## 这是什么 / What this is
+## 如果你是测试者，从这里开始 / If You Are A Tester, Start Here
 
-这个仓库的目标是把 `CEC + DigiManager` 的洁净数字发射链，用在线性卫星上的 **FT4** 实机测试。  
-This repository aims to use the clean `CEC + DigiManager` digital transmit chain for **FT4** real-radio testing on linear satellites.
+如果你只是来帮忙抓包，请不要先研究代码，也不用先理解协议。你只需要按下面 3 步做。  
+If you are here only to help with capture, do not start with the code and do not worry about the protocol. Just follow these 3 steps.
 
-它当前包含两类成果：  
-It currently contains two kinds of work:
+### 入口 1：我只是来帮忙抓包 / Path 1: I Only Want To Help Capture
+
+1. 找到 `WSJT-X` 和 `DigiManager` 各自正在用的 `COM` 口。  
+   Find which `COM` port `WSJT-X` uses and which `COM` port `DigiManager` uses.
+2. 在它们中间插入抓包代理，记录双向串口数据。  
+   Insert the capture proxy between them and record the traffic in both directions.
+3. 把 `COM` 信息、截图和抓包日志回传。  
+   Send back the `COM` info, screenshots, and capture logs.
+
+请先看这里：  
+Start here:
+
+- 快速上手 / Quick start: [docs/TESTER_QUICKSTART.md](/F:/Codex/CEC固件改装FT4/docs/TESTER_QUICKSTART.md)
+- 抓包手册 / Capture guide: [docs/SERIAL_CAPTURE_GUIDE.md](/F:/Codex/CEC固件改装FT4/docs/SERIAL_CAPTURE_GUIDE.md)
+- 抓包结果模板 / Capture report template: [docs/CAPTURE_REPORT_TEMPLATE.md](/F:/Codex/CEC固件改装FT4/docs/CAPTURE_REPORT_TEMPLATE.md)
+- 只会截图也可以 / Screenshot-only help template: [docs/COM_TOPOLOGY_HELP_TEMPLATE.md](/F:/Codex/CEC固件改装FT4/docs/COM_TOPOLOGY_HELP_TEMPLATE.md)
+
+### 入口 2：我是开发者/维护者 / Path 2: I Am A Developer Or Maintainer
+
+如果你要看项目目标、工具和当前限制，再往下看。  
+If you want the project goal, tooling, and current limitations, continue below.
+
+## 测试者的最小成功标准 / Minimum Success Standard For Testers
+
+第一次测试不要求你直接完成完整抓包。只要你能可靠地回传下面两行，就已经有价值：  
+Your first test does not need to finish a full capture. It is already useful if you can reliably send back just these two lines:
+
+```text
+WSJT-X = COM?
+DigiManager = COM?
+```
+
+如果连这两行都暂时确定不了，请直接回传 3 张截图：  
+If you cannot even confirm those two lines yet, send these 3 screenshots instead:
+
+- `WSJT-X` 设置页  
+  `WSJT-X` settings page
+- `DigiManager` 设置页  
+  `DigiManager` settings page
+- Windows 设备管理器里的 `Ports (COM & LPT)`  
+  Windows Device Manager `Ports (COM & LPT)`
+
+## 抓包前后长什么样 / What The Setup Looks Like Before And After
+
+抓包前 / Before capture:
+
+```text
+WSJT-X -> COM? -> DigiManager
+```
+
+抓包后 / After capture:
+
+```text
+WSJT-X -> COM_A -> capture-proxy -> COM_B -> DigiManager
+```
+
+这里的重点不是改业务逻辑，只是把原来的一根线中间加一个“记录员”。  
+The point is not to change the behavior. We are only inserting a “recorder” in the middle of the original link.
+
+## 给测试者的推荐顺序 / Recommended Order For Testers
+
+1. 打开 [docs/TESTER_QUICKSTART.md](/F:/Codex/CEC固件改装FT4/docs/TESTER_QUICKSTART.md)  
+   Open [docs/TESTER_QUICKSTART.md](/F:/Codex/CEC固件改装FT4/docs/TESTER_QUICKSTART.md)
+2. 先确认 `WSJT-X = COM?`、`DigiManager = COM?`  
+   Confirm `WSJT-X = COM?` and `DigiManager = COM?`
+3. 如果确认不了，直接按 [docs/COM_TOPOLOGY_HELP_TEMPLATE.md](/F:/Codex/CEC固件改装FT4/docs/COM_TOPOLOGY_HELP_TEMPLATE.md) 回传截图  
+   If you cannot confirm them, send screenshots using [docs/COM_TOPOLOGY_HELP_TEMPLATE.md](/F:/Codex/CEC固件改装FT4/docs/COM_TOPOLOGY_HELP_TEMPLATE.md)
+4. 如果确认了，再按 [docs/SERIAL_CAPTURE_GUIDE.md](/F:/Codex/CEC固件改装FT4/docs/SERIAL_CAPTURE_GUIDE.md) 插入代理并抓包  
+   If you did confirm them, continue with [docs/SERIAL_CAPTURE_GUIDE.md](/F:/Codex/CEC固件改装FT4/docs/SERIAL_CAPTURE_GUIDE.md)
+
+## 这个仓库是做什么的 / What This Repository Is For
+
+这个仓库的目标是保留 `CEC + DigiManager` 的洁净数字发射链，并把它推进到线性卫星上的 `FT4` 实机测试。  
+This repository aims to preserve the clean `CEC + DigiManager` digital transmit chain and move it toward real-radio `FT4` testing on linear satellites.
+
+当前仓库主要包含两类成果：  
+The repository currently contains two main things:
 
 - 一个 FT4-first 的卫星控频桥 `sat-bridge`  
-  An FT4-first satellite control bridge named `sat-bridge`
-- 一套给测试者使用的串口抓包工具和抓包流程  
+  An FT4-first satellite control bridge called `sat-bridge`
+- 一套给测试者使用的串口抓包工具和流程  
   A serial capture toolkit and workflow for testers
-
-## 给测试者的最快入口 / Fastest Path For Testers
-
-如果你是来帮忙测试的，请**先不要研究代码**，直接按下面顺序走：  
-If you are helping with testing, **do not start by reading the code**. Follow this order instead:
-
-1. 看快速上手：[docs/TESTER_QUICKSTART.md](/F:/Codex/CEC固件改装FT4/docs/TESTER_QUICKSTART.md)  
-   Read the quick-start guide: [docs/TESTER_QUICKSTART.md](/F:/Codex/CEC固件改装FT4/docs/TESTER_QUICKSTART.md)
-2. 生成 COM 拓扑表：`python scripts/list_serial_topology.py`  
-   Generate the COM topology worksheet: `python scripts/list_serial_topology.py`
-3. 按抓包指南操作：[docs/SERIAL_CAPTURE_GUIDE.md](/F:/Codex/CEC固件改装FT4/docs/SERIAL_CAPTURE_GUIDE.md)  
-   Follow the capture guide: [docs/SERIAL_CAPTURE_GUIDE.md](/F:/Codex/CEC固件改装FT4/docs/SERIAL_CAPTURE_GUIDE.md)
-4. 把结果按模板回传：[docs/CAPTURE_REPORT_TEMPLATE.md](/F:/Codex/CEC固件改装FT4/docs/CAPTURE_REPORT_TEMPLATE.md)  
-   Send results back using the template: [docs/CAPTURE_REPORT_TEMPLATE.md](/F:/Codex/CEC固件改装FT4/docs/CAPTURE_REPORT_TEMPLATE.md)
-
-如果你只记得一件事，那就是：  
-If you remember only one thing, remember this:
-
-- **先盘清 COM 拓扑，再抓包；不要先猜协议。**  
-  **Map the COM topology first, then capture traffic; do not guess the protocol first.**
 
 ## 当前目标 / Current Goal
 
-当前主目标是两件事：  
-The current primary goals are:
+当前最重要的目标有两个：  
+The two most important current goals are:
 
-- 让 `SatPC32 -> sat-bridge -> DigiManager -> CEC/K5` 这条 FT4 控频链跑起来  
-  Make the `SatPC32 -> sat-bridge -> DigiManager -> CEC/K5` FT4 control path work
-- 确认 `WSJT-X ↔ DigiManager` 之间真实使用的串口协议  
-  Determine the real serial protocol used between `WSJT-X` and `DigiManager`
+- 让 `SatPC32 -> sat-bridge -> DigiManager -> CEC/K5` 这条 FT4 控制链跑起来  
+  Make `SatPC32 -> sat-bridge -> DigiManager -> CEC/K5` work as an FT4 control path
+- 确认 `WSJT-X ↔ DigiManager` 之间实际使用的串口协议  
+  Determine the actual serial protocol used between `WSJT-X` and `DigiManager`
 
-在拿到最小抓包样本前，仓库里的串口协议实现仍然只是一个可替换假设层。  
-Until we have the minimum capture samples, the serial protocol implementation in this repository is still only a replaceable hypothesis layer.
+在拿到最小抓包样本前，仓库里的串口协议实现都只是可替换假设。  
+Until we have the minimum capture samples, any serial protocol implementation in this repo is still a replaceable hypothesis.
 
 ## 硬性约束 / Hard Constraints
 
-- 不允许退回模拟音频 SSB 发射  
-  No fallback to analog SSB audio injection
+- 不允许退回模拟音频 `SSB` 发射  
+  No fallback to analog `SSB` audio injection
 - 发射过程中也要连续平滑控频  
-  Doppler control must continue smoothly during TX
-- 如果现有 DigiManager 洁净链承载不了 FT4，本项目止步于控制层打通，不会伪造音频发射兜底  
-  If the current DigiManager clean chain cannot carry FT4, this project stops at the control layer instead of faking an audio workaround
+  Retuning must continue smoothly during TX
+- 如果现有 DigiManager 洁净链承载不了 FT4，本项目只停在控制层打通，不做模拟音频替代  
+  If the existing DigiManager clean chain cannot carry FT4, the project stops at the control layer instead of adding an analog audio workaround
 
 ## 固定拓扑 / Fixed Topology
-
-首版实机链路固定如下：  
-The first real-hardware topology is fixed as:
 
 ```text
 SatPC32 / Doppler software
         |
         v
-  sat-bridge rigctld TCP
+  sat-bridge rig control
         |
-        +--> WSJT-X TCP rig control (optional)
+        +--> WSJT-X control side
         |
-        +--> sat-bridge virtual COM frontend
+        +--> sat-bridge serial frontend
                  |
                  v
              WSJT-X (FT4)
@@ -92,49 +144,29 @@ sat-bridge serial backend
 
 - `SatPC32` 是上下行频率主控源  
   `SatPC32` is the uplink/downlink frequency authority
-- `WSJT-X` 只负责 FT4 业务、PTT、模式和状态查询  
-  `WSJT-X` is limited to FT4 workflow, PTT, mode, and status reads
-- `sat-bridge` 是唯一向 DigiManager 输入口发控制命令的进程  
-  `sat-bridge` is the only process allowed to drive DigiManager's input COM port
+- `WSJT-X` 只负责 FT4 业务、PTT、模式和状态  
+  `WSJT-X` is limited to FT4 workflow, PTT, mode, and status
+- `sat-bridge` 是唯一允许写 DigiManager 输入 COM 的程序  
+  `sat-bridge` is the only process allowed to write to DigiManager's input COM
 
-## 抓包工具 / Capture Tools
-
-当前仓库内置了这些工具：  
-The repository currently includes these tools:
+## 工具 / Tools
 
 - `python scripts/list_serial_topology.py`  
   列出本机串口并生成拓扑填写表  
-  Lists local serial ports and generates a topology worksheet
+  List local serial ports and generate a topology worksheet
 - `python scripts/serial_capture_proxy.py ...`  
   在 `WSJT-X` 和 `DigiManager` 之间做透明抓包代理  
-  Runs a transparent capture proxy between `WSJT-X` and `DigiManager`
+  Run a transparent capture proxy between `WSJT-X` and `DigiManager`
 - `python scripts/analyze_capture.py logs/serial-capture.jsonl`  
   对抓包结果做快速摘要  
-  Produces a quick summary of the capture log
+  Produce a quick summary of the capture log
 
 ## 配置 / Configuration
 
-主配置文件示例见 [sat_bridge.example.toml](/F:/Codex/CEC固件改装FT4/sat_bridge.example.toml)。  
-The main configuration example lives at [sat_bridge.example.toml](/F:/Codex/CEC固件改装FT4/sat_bridge.example.toml).
+配置示例见 [sat_bridge.example.toml](/F:/Codex/CEC固件改装FT4/sat_bridge.example.toml)。  
+See [sat_bridge.example.toml](/F:/Codex/CEC固件改装FT4/sat_bridge.example.toml) for the configuration example.
 
-关键配置段 / Important sections:
-
-- `bridge`: FT4 默认频率与 TX 平滑参数  
-  FT4 default frequencies and TX smoothing parameters
-- `satellite_server`: 给 `SatPC32` 的 TCP rig 控制口  
-  TCP rig control for `SatPC32`
-- `wsjtx_server`: 给 `WSJT-X` 的 TCP rig 控制口，可选  
-  Optional TCP rig control for `WSJT-X`
-- `wsjtx_serial_frontend`: 给 `WSJT-X` 的虚拟串口前端  
-  Virtual COM frontend for `WSJT-X`
-- `digimanager_serial_backend`: 指向 DigiManager 输入 COM 的后端串口  
-  Backend COM connected to DigiManager input
-- `adapter`: 当前选择 `serial` 或 `hooks`  
-  Chooses either `serial` or `hooks`
-
-## 开发与验证 / Development And Validation
-
-运行测试 / Run the tests:
+## 验证 / Validation
 
 ```powershell
 $env:PYTHONDONTWRITEBYTECODE='1'; python -m unittest discover -s tests -v
@@ -142,9 +174,9 @@ $env:PYTHONDONTWRITEBYTECODE='1'; python -m unittest discover -s tests -v
 
 ## 当前限制 / Current Limitations
 
-- 当前串口前端实现的是最小 `rigctl` 文本语义，不模拟复杂 CAT 设备方言  
-  The serial frontend currently implements a minimal text `rigctl` dialect rather than a full CAT radio personality
-- 当前后端默认命令格式也是 `rigctl` 风格文本，可在配置里覆盖模板  
-  The backend defaults to text `rigctl`-style commands, with configurable templates
-- 如果你现有修改版 `WSJT-X` 或 DigiManager 使用不同串口方言，需要在协议层再补一层兼容  
-  If your modified `WSJT-X` or DigiManager uses a different serial dialect, an additional compatibility layer will still be needed
+- 当前串口前端仍是最小控制语义，不是完整 CAT 设备人格  
+  The current serial frontend still provides only the minimum control semantics, not a full CAT device personality
+- 当前后端默认命令格式仍是可替换的假设层  
+  The current backend command format is still a replaceable hypothesis layer
+- 真正的协议适配要等最小抓包样本到位后再收敛  
+  The real protocol adaptation will be narrowed down only after the minimum capture samples arrive
