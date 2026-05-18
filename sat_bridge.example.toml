@@ -1,0 +1,53 @@
+[bridge]
+mode = "FT4"
+rx_frequency_hz = 435000000
+tx_frequency_hz = 145950000
+adapter_timeout_seconds = 5.0
+tx_min_step_hz = 10
+tx_rate_limit_hz = 5.0
+tx_rate_limit_window_ms = 200
+
+[satellite_server]
+host = "127.0.0.1"
+port = 4533
+
+[wsjtx_server]
+host = "127.0.0.1"
+port = 4534
+
+[wsjtx_serial_frontend]
+enabled = false
+port = "COM11"
+baudrate = 9600
+read_timeout_seconds = 0.1
+read_chunk_size = 256
+
+[digimanager_serial_backend]
+enabled = false
+port = "COM12"
+baudrate = 9600
+read_timeout_seconds = 0.1
+write_timeout_seconds = 0.5
+response_timeout_seconds = 0.3
+command_terminator = "\n"
+response_terminator = "\n"
+expect_response = false
+protocol = "rigctl"
+
+[digimanager_serial_backend.commands]
+set_rx_frequency = "I {frequency_hz}"
+set_tx_frequency = "X {frequency_hz}"
+set_radio_frequency = "F {frequency_hz}"
+set_mode = "M {mode}"
+set_ptt = "T {ptt}"
+
+[adapter]
+kind = "hooks"
+
+[adapter.commands]
+# Development-only hook adapter. Switch `adapter.kind` to `serial` for real hardware.
+set_rx_frequency = ["python", "scripts/digctl.py", "set-rx", "{frequency_hz}"]
+set_tx_frequency = ["python", "scripts/digctl.py", "set-tx", "{frequency_hz}"]
+set_radio_frequency = ["python", "scripts/digctl.py", "set-active", "{frequency_hz}"]
+set_mode = ["python", "scripts/digctl.py", "set-mode", "{mode}"]
+set_ptt = ["python", "scripts/digctl.py", "set-ptt", "{ptt}"]
