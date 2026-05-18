@@ -1,60 +1,49 @@
 ---
-name: Capture Report / 抓包结果提交
-about: Submit COM info, capture logs, and observations after you already completed a capture.
-title: "[capture] "
+name: UDP Capture Report / UDP 抓包结果提交
+about: Submit loopback UDP capture results for WSJT-X / DigiManager.
+title: "[udp-capture] "
 labels: ["capture"]
 assignees: []
 ---
 
 ## Before You Start / 提交前先确认
 
-- [ ] I already know the WSJT-X COM / 我已经确认 WSJT-X 的 COM
-- [ ] I already know the DigiManager COM / 我已经确认 DigiManager 的 COM
-- [ ] I already completed at least one capture run / 我已经完成至少一轮抓包
+- [ ] I already confirmed the live UDP ports / 我已经确认现场 UDP 端口
+- [ ] I already completed at least one loopback UDP capture / 我已经完成至少一轮 loopback UDP 抓包
 
-## COM Information / COM 信息
-
-```text
-WSJT-X = COM?
-DigiManager = COM?
-```
-
-- Virtual COM tool / 虚拟串口工具:
-- Baud rate / 波特率:
-- Other serial settings / 其他串口参数:
-
-## Proxy Topology / 代理插入后的链路
+## Port Facts / 端口事实
 
 ```text
-WSJT-X -> COM_A -> capture-proxy -> COM_B -> DigiManager
+WSJT-X PTT = ?
+WSJT-X UDPServerPort = ?
+WSJT-X SendSymPort = ?
+DigiManager UDP port = ?
+wsjtx.exe live UDP port = ?
 ```
-
-- COM_A =
-- COM_B =
-- Capture command used / 实际使用的抓包命令:
 
 ## Scenarios Captured / 已抓场景
 
 - [ ] `startup`
-- [ ] `idle_read`
-- [ ] `set_freq`
-- [ ] `mode_change`
-- [ ] `ptt_on`
-- [ ] `ptt_off`
-- [ ] `tx_retune`
+- [ ] `idle`
+- [ ] `decode`
+- [ ] `tx_prepare`
+- [ ] `vox_tx_start`
+- [ ] `tx_symbols`
+- [ ] `tx_end`
+- [ ] `error_case`
 
 ## Files Attached / 已附文件
 
-- [ ] `serial-topology-template.csv`
-- [ ] `serial-capture.jsonl`
-- [ ] analyzer output / 分析脚本输出
+- [ ] `pcapng`
+- [ ] `logs/udp-port-observation.json`
+- [ ] notes / 文字说明
 
 ## Observations / 观察结果
 
-- Was the original fixed-frequency chain working before capture? / 抓包前原始固定频点链路是否正常？
-- Which step failed most easily? / 哪一步最容易失败？
-- Did retuning during TX clearly happen? / 发射中的改频是否明显发生？
-- Did the traffic look more like text or binary? / 抓包看起来更像文本还是二进制？
+- Which port did WSJT-X mainly send to? / WSJT-X 主要发往哪个端口？
+- Which port did DigiManager appear to listen on? / DigiManager 看起来主要监听哪个端口？
+- Did 5957 carry key FT4 transmit data? / 5957 是否承载 FT4 发射关键数据？
+- What did 2237 vs 4532 look like? / 2237 和 4532 看起来是什么关系？
 
 ## One-Sentence Conclusion / 一句话总结
 

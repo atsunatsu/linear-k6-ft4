@@ -1,6 +1,6 @@
 ---
 name: Tester Problem / 测试问题反馈
-about: Report a blocker or unexpected problem during quick-start, COM discovery, or capture.
+about: Report a blocker during UDP port observation or loopback UDP capture.
 title: "[tester-problem] "
 labels: ["tester-problem"]
 assignees: []
@@ -8,43 +8,30 @@ assignees: []
 
 ## Which Step Failed / 哪一步出了问题
 
-- [ ] I could not find the WSJT-X COM / 我找不到 WSJT-X 的 COM
-- [ ] I could not find the DigiManager COM / 我找不到 DigiManager 的 COM
-- [ ] I could not tell whether the original chain still worked / 我看不出原始链路是否还正常
-- [ ] I inserted the proxy but the chain stopped working / 插入代理后链路不工作了
-- [ ] The proxy ran but no log file was produced / 代理运行了但没有生成日志
-- [ ] I got a log file but I do not know whether it is correct / 我拿到了日志但不知道是否正确
-- [ ] I could not trigger retuning during TX / 我无法触发发射中的改频
+- [ ] I could not confirm the live UDP ports / 我无法确认现场 UDP 端口
+- [ ] I could not run the UDP port observation script / 我无法运行 UDP 端口观察脚本
+- [ ] I have not installed loopback capture tools yet / 我还没装 loopback 抓包工具
+- [ ] I installed the tool but could not see loopback traffic / 已安装工具但看不到 loopback 流量
+- [ ] I could not trigger clear UDP traffic during FT4 actions / 我无法在 FT4 动作时触发明显 UDP 流量
+- [ ] I captured traffic but do not know whether it is correct / 我抓到流量了但不知道是否正确
 - [ ] Other / 其他
 
-## What You Were Trying To Do / 你当时想做什么
-
--  
-
-## What Happened Instead / 实际发生了什么
-
--  
-
-## COM Information / COM 信息
+## Port Facts / 端口事实
 
 ```text
-WSJT-X = COM?
-DigiManager = COM?
+WSJT-X PTT = ?
+WSJT-X UDPServerPort = ?
+WSJT-X SendSymPort = ?
+DigiManager UDP port = ?
+wsjtx.exe live UDP port = ?
 ```
-
-## Software Versions / 软件版本
-
-- Operating system / 操作系统:
-- WSJT-X version / WSJT-X 版本:
-- DigiManager version / DigiManager 版本:
-- CEC/K5 firmware version / CEC/K5 固件版本:
 
 ## Screenshots Or Logs / 截图或日志
 
 - [ ] WSJT-X settings screenshot / WSJT-X 设置截图
-- [ ] DigiManager settings screenshot / DigiManager 设置截图
-- [ ] Device Manager ports screenshot / 设备管理器端口截图
-- [ ] capture log / 抓包日志
+- [ ] DigiManager UDP settings screenshot / DigiManager UDP 设置截图
+- [ ] `logs/udp-port-observation.json`
+- [ ] `pcapng`
 
 ## One-Sentence Conclusion / 一句话总结
 

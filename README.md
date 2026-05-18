@@ -5,78 +5,98 @@ Chinese and English are provided side by side. Future project documentation shou
 
 ## 如果你是测试者，从这里开始 / If You Are A Tester, Start Here
 
-如果你只是来帮忙抓包，请不要先研究代码，也不用先理解协议。你只需要按下面 3 步做。  
-If you are here only to help with capture, do not start with the code and do not worry about the protocol. Just follow these 3 steps.
+如果你只是来帮忙抓包，请先按 **UDP 路线** 走，不要默认自己需要串口代理。  
+If you are here only to help with capture, start with the **UDP path** and do not assume you need a serial proxy.
 
 ### 入口 1：我只是来帮忙抓包 / Path 1: I Only Want To Help Capture
 
-1. 找到 `WSJT-X` 和 `DigiManager` 各自正在用的 `COM` 口。  
-   Find which `COM` port `WSJT-X` uses and which `COM` port `DigiManager` uses.
-2. 在它们中间插入抓包代理，记录双向串口数据。  
-   Insert the capture proxy between them and record the traffic in both directions.
-3. 把 `COM` 信息、截图和抓包日志回传。  
-   Send back the `COM` info, screenshots, and capture logs.
+1. 先确认 `WSJT-X` 和 `DigiManager` 当前用的是不是本机 `UDP`。  
+   First confirm whether `WSJT-X` and `DigiManager` are using local `UDP`.
+2. 观察 `2237 / 4532 / 5957` 这几个关键端口。  
+   Observe the key ports `2237 / 4532 / 5957`.
+3. 用 Windows loopback capture 抓 `WSJT-X ↔ DigiManager` 的本机 `UDP`。  
+   Use Windows loopback capture to record the local `UDP` traffic between `WSJT-X` and `DigiManager`.
+4. 只有在 UDP 不足以解释行为时，才回头看设备侧串口控制面。  
+   Only fall back to the device-side serial control path if the UDP traffic is not enough to explain the behavior.
 
 请先看这里：  
 Start here:
 
-- 快速上手 / Quick start: [docs/TESTER_QUICKSTART.md](/F:/Codex/CEC固件改装FT4/docs/TESTER_QUICKSTART.md)
-- 抓包手册 / Capture guide: [docs/SERIAL_CAPTURE_GUIDE.md](/F:/Codex/CEC固件改装FT4/docs/SERIAL_CAPTURE_GUIDE.md)
-- 抓包结果模板 / Capture report template: [docs/CAPTURE_REPORT_TEMPLATE.md](/F:/Codex/CEC固件改装FT4/docs/CAPTURE_REPORT_TEMPLATE.md)
-- 只会截图也可以 / Screenshot-only help template: [docs/COM_TOPOLOGY_HELP_TEMPLATE.md](/F:/Codex/CEC固件改装FT4/docs/COM_TOPOLOGY_HELP_TEMPLATE.md)
+- UDP 快速上手 / UDP quick start: [docs/UDP_CAPTURE_QUICKSTART.md](/F:/Codex/CEC固件改装FT4/docs/UDP_CAPTURE_QUICKSTART.md)
+- UDP 抓包手册 / UDP capture guide: [docs/UDP_LOOPBACK_CAPTURE_GUIDE.md](/F:/Codex/CEC固件改装FT4/docs/UDP_LOOPBACK_CAPTURE_GUIDE.md)
+- 端口观察模板 / Port observation template: [docs/UDP_PORT_OBSERVATION_TEMPLATE.md](/F:/Codex/CEC固件改装FT4/docs/UDP_PORT_OBSERVATION_TEMPLATE.md)
+- UDP 抓包结果模板 / UDP capture report template: [docs/UDP_CAPTURE_REPORT_TEMPLATE.md](/F:/Codex/CEC固件改装FT4/docs/UDP_CAPTURE_REPORT_TEMPLATE.md)
 
-### 入口 2：我是开发者/维护者 / Path 2: I Am A Developer Or Maintainer
+### 入口 2：串口抓包是第二阶段 / Path 2: Serial Capture Is Phase Two
 
-如果你要看项目目标、工具和当前限制，再往下看。  
-If you want the project goal, tooling, and current limitations, continue below.
+如果第一轮 UDP 抓包已经能解释 `FT4` 行为，就不要再继续设备侧串口抓包。  
+If the first round of UDP capture already explains the `FT4` behavior, do not continue to device-side serial capture.
+
+只有在这些情况出现时，才继续看串口路线：  
+Only use the serial path if one of these becomes true:
+
+- `UDP` 流量不足以解释 DigiManager 如何驱动洁净发射  
+  The `UDP` traffic is not enough to explain how DigiManager drives the clean transmit path
+- `FT4` 发射关键行为没有体现在 `UDP` 面  
+  The key `FT4` transmit behavior does not appear in the `UDP` layer
+- 必须进一步观察 `DigiManager ↔ CEC/K5` 的设备控制流  
+  You must go deeper into the `DigiManager ↔ CEC/K5` device-side control flow
+
+串口路线保留在这里：  
+The serial fallback documents remain here:
+
+- [docs/SERIAL_CAPTURE_GUIDE.md](/F:/Codex/CEC固件改装FT4/docs/SERIAL_CAPTURE_GUIDE.md)
+- [docs/CAPTURE_REPORT_TEMPLATE.md](/F:/Codex/CEC固件改装FT4/docs/CAPTURE_REPORT_TEMPLATE.md)
+- [docs/COM_TOPOLOGY_HELP_TEMPLATE.md](/F:/Codex/CEC固件改装FT4/docs/COM_TOPOLOGY_HELP_TEMPLATE.md)
 
 ## 测试者的最小成功标准 / Minimum Success Standard For Testers
 
-第一次测试不要求你直接完成完整抓包。只要你能可靠地回传下面两行，就已经有价值：  
-Your first test does not need to finish a full capture. It is already useful if you can reliably send back just these two lines:
+第一次测试不要求你立刻提交完整 `pcapng`。只要你能确认并回传下面这些信息，就已经有价值：  
+Your first test does not need to produce a complete `pcapng` immediately. It is already useful if you can send back these facts:
 
 ```text
-WSJT-X = COM?
-DigiManager = COM?
+WSJT-X PTT = VOX?
+WSJT-X UDPServerPort = ?
+WSJT-X SendSymPort = ?
+DigiManager UDP port = ?
+wsjtx.exe live UDP port = ?
 ```
 
-如果连这两行都暂时确定不了，请直接回传 3 张截图：  
-If you cannot even confirm those two lines yet, send these 3 screenshots instead:
-
-- `WSJT-X` 设置页  
-  `WSJT-X` settings page
-- `DigiManager` 设置页  
-  `DigiManager` settings page
-- Windows 设备管理器里的 `Ports (COM & LPT)`  
-  Windows Device Manager `Ports (COM & LPT)`
+如果你还没装抓包工具，也没有关系，先回传端口观察结果即可。  
+If you have not installed the capture tool yet, that is fine. The port-observation result is already useful.
 
 ## 抓包前后长什么样 / What The Setup Looks Like Before And After
 
 抓包前 / Before capture:
 
 ```text
-WSJT-X -> COM? -> DigiManager
+WSJT-X -> local UDP -> DigiManager
 ```
 
-抓包后 / After capture:
+抓包时 / During capture:
 
 ```text
-WSJT-X -> COM_A -> capture-proxy -> COM_B -> DigiManager
+WSJT-X -> local UDP -> DigiManager
+           ^
+           |
+   loopback packet capture
 ```
 
-这里的重点不是改业务逻辑，只是把原来的一根线中间加一个“记录员”。  
-The point is not to change the behavior. We are only inserting a “recorder” in the middle of the original link.
+这里的重点不是改业务逻辑，而是在原链路上做**无侵入观察**。  
+The point is not to change the behavior. We are doing **non-invasive observation** on the original link.
 
 ## 给测试者的推荐顺序 / Recommended Order For Testers
 
-1. 打开 [docs/TESTER_QUICKSTART.md](/F:/Codex/CEC固件改装FT4/docs/TESTER_QUICKSTART.md)  
-   Open [docs/TESTER_QUICKSTART.md](/F:/Codex/CEC固件改装FT4/docs/TESTER_QUICKSTART.md)
-2. 先确认 `WSJT-X = COM?`、`DigiManager = COM?`  
-   Confirm `WSJT-X = COM?` and `DigiManager = COM?`
-3. 如果确认不了，直接按 [docs/COM_TOPOLOGY_HELP_TEMPLATE.md](/F:/Codex/CEC固件改装FT4/docs/COM_TOPOLOGY_HELP_TEMPLATE.md) 回传截图  
-   If you cannot confirm them, send screenshots using [docs/COM_TOPOLOGY_HELP_TEMPLATE.md](/F:/Codex/CEC固件改装FT4/docs/COM_TOPOLOGY_HELP_TEMPLATE.md)
-4. 如果确认了，再按 [docs/SERIAL_CAPTURE_GUIDE.md](/F:/Codex/CEC固件改装FT4/docs/SERIAL_CAPTURE_GUIDE.md) 插入代理并抓包  
-   If you did confirm them, continue with [docs/SERIAL_CAPTURE_GUIDE.md](/F:/Codex/CEC固件改装FT4/docs/SERIAL_CAPTURE_GUIDE.md)
+1. 打开 [docs/UDP_CAPTURE_QUICKSTART.md](/F:/Codex/CEC固件改装FT4/docs/UDP_CAPTURE_QUICKSTART.md)  
+   Open [docs/UDP_CAPTURE_QUICKSTART.md](/F:/Codex/CEC固件改装FT4/docs/UDP_CAPTURE_QUICKSTART.md)
+2. 运行 `python scripts/observe_udp_ports.py`  
+   Run `python scripts/observe_udp_ports.py`
+3. 回传端口观察结果，确认 `2237 / 4532 / 5957` 的现场关系  
+   Send back the port-observation result and confirm the live relationship between `2237 / 4532 / 5957`
+4. 安装 `Npcap` / `Wireshark` 或 `tshark`  
+   Install `Npcap` / `Wireshark` or `tshark`
+5. 按 [docs/UDP_LOOPBACK_CAPTURE_GUIDE.md](/F:/Codex/CEC固件改装FT4/docs/UDP_LOOPBACK_CAPTURE_GUIDE.md) 抓 `startup / idle / decode / vox_tx_start / tx_symbols / tx_end`  
+   Follow [docs/UDP_LOOPBACK_CAPTURE_GUIDE.md](/F:/Codex/CEC固件改装FT4/docs/UDP_LOOPBACK_CAPTURE_GUIDE.md) to capture `startup / idle / decode / vox_tx_start / tx_symbols / tx_end`
 
 ## 这个仓库是做什么的 / What This Repository Is For
 
@@ -88,8 +108,8 @@ The repository currently contains two main things:
 
 - 一个 FT4-first 的卫星控频桥 `sat-bridge`  
   An FT4-first satellite control bridge called `sat-bridge`
-- 一套给测试者使用的串口抓包工具和流程  
-  A serial capture toolkit and workflow for testers
+- 一套给测试者使用的抓包和观察工具  
+  A set of capture and observation tools for testers
 
 ## 当前目标 / Current Goal
 
@@ -98,11 +118,8 @@ The two most important current goals are:
 
 - 让 `SatPC32 -> sat-bridge -> DigiManager -> CEC/K5` 这条 FT4 控制链跑起来  
   Make `SatPC32 -> sat-bridge -> DigiManager -> CEC/K5` work as an FT4 control path
-- 确认 `WSJT-X ↔ DigiManager` 之间实际使用的串口协议  
-  Determine the actual serial protocol used between `WSJT-X` and `DigiManager`
-
-在拿到最小抓包样本前，仓库里的串口协议实现都只是可替换假设。  
-Until we have the minimum capture samples, any serial protocol implementation in this repo is still a replaceable hypothesis.
+- 确认 `WSJT-X ↔ DigiManager` 之间的实际本机 `UDP` 交互  
+  Determine the actual local `UDP` interaction between `WSJT-X` and `DigiManager`
 
 ## 硬性约束 / Hard Constraints
 
@@ -113,53 +130,17 @@ Until we have the minimum capture samples, any serial protocol implementation in
 - 如果现有 DigiManager 洁净链承载不了 FT4，本项目只停在控制层打通，不做模拟音频替代  
   If the existing DigiManager clean chain cannot carry FT4, the project stops at the control layer instead of adding an analog audio workaround
 
-## 固定拓扑 / Fixed Topology
-
-```text
-SatPC32 / Doppler software
-        |
-        v
-  sat-bridge rig control
-        |
-        +--> WSJT-X control side
-        |
-        +--> sat-bridge serial frontend
-                 |
-                 v
-             WSJT-X (FT4)
-
-sat-bridge serial backend
-        |
-        v
-   DigiManager input COM
-        |
-        v
-      DigiManager
-        |
-        v
-      CEC / K5
-```
-
-要点 / Key points:
-
-- `SatPC32` 是上下行频率主控源  
-  `SatPC32` is the uplink/downlink frequency authority
-- `WSJT-X` 只负责 FT4 业务、PTT、模式和状态  
-  `WSJT-X` is limited to FT4 workflow, PTT, mode, and status
-- `sat-bridge` 是唯一允许写 DigiManager 输入 COM 的程序  
-  `sat-bridge` is the only process allowed to write to DigiManager's input COM
-
 ## 工具 / Tools
 
+- `python scripts/observe_udp_ports.py`  
+  读取 `WSJT-X.ini` 并观察 `2237 / 4532 / 5957` 的现场占用情况  
+  Read `WSJT-X.ini` and observe the live bindings for `2237 / 4532 / 5957`
 - `python scripts/list_serial_topology.py`  
-  列出本机串口并生成拓扑填写表  
-  List local serial ports and generate a topology worksheet
+  保留为第二阶段设备侧串口排查工具  
+  Kept as a second-stage tool for device-side serial investigation
 - `python scripts/serial_capture_proxy.py ...`  
-  在 `WSJT-X` 和 `DigiManager` 之间做透明抓包代理  
-  Run a transparent capture proxy between `WSJT-X` and `DigiManager`
-- `python scripts/analyze_capture.py logs/serial-capture.jsonl`  
-  对抓包结果做快速摘要  
-  Produce a quick summary of the capture log
+  保留为第二阶段串口透明代理  
+  Kept as the second-stage transparent serial proxy
 
 ## 配置 / Configuration
 
@@ -174,9 +155,9 @@ $env:PYTHONDONTWRITEBYTECODE='1'; python -m unittest discover -s tests -v
 
 ## 当前限制 / Current Limitations
 
-- 当前串口前端仍是最小控制语义，不是完整 CAT 设备人格  
-  The current serial frontend still provides only the minimum control semantics, not a full CAT device personality
-- 当前后端默认命令格式仍是可替换的假设层  
-  The current backend command format is still a replaceable hypothesis layer
-- 真正的协议适配要等最小抓包样本到位后再收敛  
-  The real protocol adaptation will be narrowed down only after the minimum capture samples arrive
+- 当前首选抓包路线依赖 Windows loopback capture 工具  
+  The preferred capture path currently depends on Windows loopback capture tools
+- 当前仓库不自带 `pcapng` 解析器  
+  The repository does not yet include a built-in `pcapng` parser
+- 设备侧串口控制面仍保留，但降级为第二阶段路线  
+  The device-side serial control path still exists, but it is now a phase-two path
