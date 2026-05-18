@@ -26,6 +26,7 @@ Start here:
 - UDP 抓包手册 / UDP capture guide: [docs/UDP_LOOPBACK_CAPTURE_GUIDE.md](/F:/Codex/CEC固件改装FT4/docs/UDP_LOOPBACK_CAPTURE_GUIDE.md)
 - 端口观察模板 / Port observation template: [docs/UDP_PORT_OBSERVATION_TEMPLATE.md](/F:/Codex/CEC固件改装FT4/docs/UDP_PORT_OBSERVATION_TEMPLATE.md)
 - UDP 抓包结果模板 / UDP capture report template: [docs/UDP_CAPTURE_REPORT_TEMPLATE.md](/F:/Codex/CEC固件改装FT4/docs/UDP_CAPTURE_REPORT_TEMPLATE.md)
+- UDP 重放台架快速上手 / UDP replay bench quick start: [docs/UDP_REPLAY_QUICKSTART.md](/F:/Codex/CEC固件改装FT4/docs/UDP_REPLAY_QUICKSTART.md)
 
 ### 入口 2：串口抓包是第二阶段 / Path 2: Serial Capture Is Phase Two
 
@@ -135,6 +136,15 @@ The two most important current goals are:
 - `python scripts/observe_udp_ports.py`  
   读取 `WSJT-X.ini` 并观察 `2237 / 4532 / 5957` 的现场占用情况  
   Read `WSJT-X.ini` and observe the live bindings for `2237 / 4532 / 5957`
+- `python scripts/analyze_udp_capture.py <pcapng> [<pcapng> ...]`  
+  直接解析 `pcapng`，输出 `2237 / 5957` 摘要和 `FT4 vs FT8` 差异  
+  Parse `pcapng` directly and print `2237 / 5957` summaries plus `FT4 vs FT8` differences
+- `python scripts/export_udp_replay.py --input <pcapng> --mode FT4|FT8 --output <json>`  
+  从 `5957` 真实样本导出可重放的 JSON 序列  
+  Export replayable JSON sequences from real `5957` samples
+- `python scripts/replay_udp_sequence.py --input <json> [--dry-run] [--fast-replay]`  
+  在本机台架上向 `127.0.0.1:5957` 重放样本集  
+  Replay sample sequences toward `127.0.0.1:5957` on the local bench
 - `python scripts/list_serial_topology.py`  
   保留为第二阶段设备侧串口排查工具  
   Kept as a second-stage tool for device-side serial investigation
@@ -157,7 +167,7 @@ $env:PYTHONDONTWRITEBYTECODE='1'; python -m unittest discover -s tests -v
 
 - 当前首选抓包路线依赖 Windows loopback capture 工具  
   The preferred capture path currently depends on Windows loopback capture tools
-- 当前仓库不自带 `pcapng` 解析器  
-  The repository does not yet include a built-in `pcapng` parser
+- 当前 `pcapng` 解析器只覆盖本项目需要的最小 `UDP` 场景  
+  The current `pcapng` parser only covers the minimum `UDP` scenarios needed by this project
 - 设备侧串口控制面仍保留，但降级为第二阶段路线  
   The device-side serial control path still exists, but it is now a phase-two path
