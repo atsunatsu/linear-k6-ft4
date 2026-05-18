@@ -55,6 +55,9 @@ Complete the worksheet using:
 - 你当前使用的虚拟串口工具  
   Your current virtual COM utility
 
+如果你完全不确定现在谁连着谁，请先停在这一步，不要急着插代理。  
+If you are not sure who is connected to what, stop here first and do not insert the proxy yet.
+
 ## 第二步：插入串口代理 / Step 2: Insert the capture proxy
 
 当你知道 `WSJT-X` 和 `DigiManager` 原本各自连接的 COM 口后，把中间链路改成：  
@@ -117,6 +120,18 @@ For the first capture pass, use this order:
 建议每个场景单独跑一轮，并修改 `--scenario` 标签。  
 It is recommended to run each scenario separately and change the `--scenario` label each time.
 
+推荐的场景标签 / Recommended scenario labels:
+
+- `startup`
+- `idle_read`
+- `set_freq`
+- `mode_change`
+- `ptt_on`
+- `ptt_off`
+- `tx_retune`
+- `shutdown`
+- `error_case`
+
 ## 第四步：快速看抓包是不是像文本协议 / Step 4: Quickly inspect whether it looks text-based
 
 抓完以后先跑分析脚本：  
@@ -142,6 +157,36 @@ It prints:
 
 如果 `ascii_like_ratio` 很高，并且样本里能看出像 `F 145950000` 这种可读文本，就优先按文本协议分析。  
 If `ascii_like_ratio` is high and the samples look like readable commands such as `F 145950000`, start with a text-protocol hypothesis.
+
+## 抓包后要提交什么 / What To Submit After Capture
+
+请不要只发一份 `.jsonl` 文件就结束。最有用的提交包应同时包含：  
+Please do not send only a `.jsonl` file. The most useful submission bundle should include:
+
+1. 填写后的 COM 拓扑清单  
+   The completed COM topology worksheet
+2. 抓包日志 `logs/serial-capture.jsonl`  
+   The capture log `logs/serial-capture.jsonl`
+3. 分析脚本输出  
+   The analyzer output
+4. 一份文字说明  
+   A written report
+
+文字说明请按这个模板填写：  
+Use this template for the written report:
+
+[docs/CAPTURE_REPORT_TEMPLATE.md](/F:/Codex/CEC固件改装FT4/docs/CAPTURE_REPORT_TEMPLATE.md)
+
+## 常见错误 / Common Mistakes
+
+- 不清楚 COM 拓扑就直接开始改线  
+  Rewiring before understanding the COM topology
+- 一口气抓很多场景，但没有换 `--scenario` 标签  
+  Capturing many scenarios at once without changing the `--scenario` label
+- 抓到了启动和 PTT，但漏掉“发射中连续改频”  
+  Capturing startup and PTT but missing in-TX retuning
+- 改动链路后没有确认原有工作链还能正常连通  
+  Failing to verify that the original working chain still connects after rewiring
 
 ## 日志格式 / Log Format
 
