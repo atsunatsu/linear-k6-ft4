@@ -45,7 +45,7 @@ You only need these 4 steps:
 
 ## 最短可执行流程 / Shortest Working Procedure
 
-### 1. 安全边界 / Safety Boundary
+### 1. 先确认安全 / Confirm Safety First
 
 只在下面条件下继续：  
 Only continue under these conditions:
@@ -54,35 +54,83 @@ Only continue under these conditions:
 - `无天线 / No antenna`
 - `有人值守 / Attended bench test`
 
-### 2. 打开软件 / Open The Software
+如果你不确定自己是不是“假负载、无天线”，请先不要测试。  
+If you are not sure whether you are using a dummy load and no antenna, do not continue yet.
 
-- 打开 `UVK5DigManager`
-- 确认电台连接正常
-- 这一步**不要求打开 `WSJT-X`**
+### 2. 先打开什么 / What To Open First
 
-- Open `UVK5DigManager`
-- Confirm the radio is connected
-- You do **not** need `WSJT-X` for this phase
+你现在只需要打开：  
+Right now you only need to open:
 
-### 3. 先做不发包检查 / Dry Run First
+- `UVK5DigManager`
+- 电台，并确认它已经连上 `UVK5DigManager`
+
+你现在**不需要打开 `WSJT-X`**。  
+You do **not** need to open `WSJT-X` for this phase.
+
+### 3. 在哪里输入命令 / Where To Type The Commands
+
+请在项目文件夹里打开 `PowerShell`。  
+Open `PowerShell` inside the project folder.
+
+最简单的方法：  
+The easiest way:
+
+1. 打开这个文件夹：`CEC固件改装FT4`
+2. 在文件夹空白处按住 `Shift` 再点鼠标右键
+3. 选择“在此处打开 PowerShell 窗口”或“在终端中打开”
+
+1. Open the folder: `CEC固件改装FT4`
+2. Hold `Shift` and right-click on empty space
+3. Choose “Open PowerShell window here” or “Open in Terminal”
+
+### 4. 先做“不会发射”的检查 / Do The “No Transmit” Check First
+
+`dry-run` 的意思很简单：  
+`dry-run` means something very simple:
+
+- **只显示接下来会做什么**
+- **不会真的发 UDP**
+- **不会真的触发发射**
+
+- **It only shows what would happen next**
+- **It does not really send UDP**
+- **It does not really trigger transmit**
+
+请把下面第一行完整复制到 PowerShell 里，然后按回车：  
+Copy the first line below into PowerShell and press Enter:
 
 ```powershell
 python scripts\replay_udp_sequence.py --input samples\replay\ft8-replay.json --dry-run
+```
+
+看到一长串 `index=`、`offset_ms=`、`tag=` 之类的内容，就说明这一步正常。  
+If you see many lines containing `index=`, `offset_ms=`, and `tag=`, this step worked.
+
+然后再复制第二行并按回车：  
+Then copy the second line and press Enter:
+
+```powershell
 python scripts\replay_udp_sequence.py --input samples\replay\ft4-replay.json --dry-run
 ```
 
-这一步只打印顺序，不真正发 UDP。  
-This only prints packet order and does not send UDP yet.
+如果这两步都能正常显示内容，就可以进入下一步。  
+If both commands print normal output, you can continue.
 
-### 4. 先重放 FT8，再重放 FT4 / Replay FT8 First, Then FT4
+### 5. 先测 FT8，再测 FT4 / Test FT8 First, Then FT4
+
+先复制这一行并按回车：  
+Copy this line first and press Enter:
 
 ```powershell
 python scripts\replay_udp_sequence.py --input samples\replay\ft8-replay.json --fast-replay
-python scripts\replay_udp_sequence.py --input samples\replay\ft4-replay.json --fast-replay
 ```
 
-观察这几件事：  
-Observe these items:
+这一步开始才会真的向 `DigiManager` 发测试数据。  
+This is the first step that actually sends test data to `DigiManager`.
+
+请盯着这 3 个东西看：  
+Watch these 3 things:
 
 - `DigiManager` 界面有没有变化  
   Does the `DigiManager` UI change?
@@ -91,18 +139,42 @@ Observe these items:
 - 电台有没有发射相关反应  
   Does the radio show any transmit-related behavior?
 
-### 5. 再做单包模式标记对比 / Compare Single Marker Packets
+记一下结果后，再复制这一行并按回车：  
+After you note the result, copy this line and press Enter:
+
+```powershell
+python scripts\replay_udp_sequence.py --input samples\replay\ft4-replay.json --fast-replay
+```
+
+然后继续看同样的 3 个东西。  
+Then watch the same 3 things again.
+
+### 6. 最后做单包对比 / Finally Compare Single Marker Packets
+
+这一步是“只发一个特殊包，看看会不会有反应”。  
+This step means “send only one special packet and see whether anything reacts.”
+
+先运行这一行：  
+Run this line first:
+
+```powershell
+python scripts\replay_udp_sequence.py --input samples\replay\ft8-replay.json --single-packet-tag ft8_mode_marker
+```
+
+再运行这一行：  
+Then run this line:
 
 ```powershell
 python scripts\replay_udp_sequence.py --input samples\replay\ft4-replay.json --single-packet-tag ft4_mode_marker
-python scripts\replay_udp_sequence.py --input samples\replay\ft8-replay.json --single-packet-tag ft8_mode_marker
 ```
 
 这一轮主要看：  
 This round mainly checks:
 
-- `04 00` 和 `08 00` 是否触发不同反应  
-  Whether `04 00` and `08 00` trigger different responses
+- `ft8_mode_marker` 有没有反应  
+  Whether `ft8_mode_marker` triggers any response
+- `ft4_mode_marker` 有没有反应  
+  Whether `ft4_mode_marker` triggers any response
 
 ## 你要回报什么 / What You Should Report Back
 
