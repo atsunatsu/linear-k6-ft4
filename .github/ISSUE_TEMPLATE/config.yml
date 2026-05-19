@@ -1,11 +1,8 @@
 blank_issues_enabled: false
 contact_links:
-  - name: UDP Capture Quick Start / UDP 抓包快速上手
-    url: https://github.com/atsunatsu/linear-k6-ft4/blob/main/docs/UDP_CAPTURE_QUICKSTART.md
-    about: Start here if WSJT-X uses VOX and DigiManager uses UDP.
-  - name: UDP Loopback Capture Guide / UDP 回环抓包手册
-    url: https://github.com/atsunatsu/linear-k6-ft4/blob/main/docs/UDP_LOOPBACK_CAPTURE_GUIDE.md
-    about: Use this after you confirm the live UDP ports.
-  - name: Serial Capture Guide (Phase Two) / 串口抓包手册（第二阶段）
-    url: https://github.com/atsunatsu/linear-k6-ft4/blob/main/docs/SERIAL_CAPTURE_GUIDE.md
-    about: Use this only if UDP capture is not enough.
+  - name: Current Test Guide / 当前测试说明
+    url: https://github.com/atsunatsu/linear-k6-ft4/blob/main/README.md
+    about: Start here if you want to run the current FT8/FT4 replay bench test.
+  - name: UDP Replay Bench Quick Start / UDP 重放台架快速开始
+    url: https://github.com/atsunatsu/linear-k6-ft4/blob/main/docs/UDP_REPLAY_QUICKSTART.md
+    about: Follow this if you are ready to test with the included replay samples.

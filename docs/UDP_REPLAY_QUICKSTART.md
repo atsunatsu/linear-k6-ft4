@@ -1,87 +1,106 @@
-# UDP 重放台架快速上手 / UDP Replay Bench Quick Start
+# UDP Replay Bench Quick Start / UDP 重放台架快速开始
 
-## 这份说明适合谁 / Who This Is For
+## 这份说明给谁看 / Who This Is For
 
-这份说明适合已经完成 `FT4-only` 和 `FT8-only` 抓包、准备推进到台架发射验证的人。  
-This guide is for people who already completed `FT4-only` and `FT8-only` captures and want to move to bench replay validation.
+这份说明给现在要做**真实台架重放测试**的人。  
+This guide is for people who are doing the **current bench replay test**.
 
-## 安全边界 / Safety Boundary
+你现在不需要先抓包。仓库里已经附带了现成样本。  
+You do not need to capture packets first. The repository already includes ready-made samples.
 
-请只在下面条件下继续：
+## 先准备什么 / What To Prepare First
 
-- 假负载  
-  Dummy load
-- 无天线  
-  No antenna
-- 明确可控的台架环境  
-  A controlled bench environment
+请先确认这 4 件事：  
+Please confirm these 4 things first:
 
-## 第一步：先分析两份抓包 / Step 1: Analyze The Two Captures
+1. `假负载 / Dummy load`
+2. `无天线 / No antenna`
+3. `UVK5DigManager` 已经打开
+4. 电台已经连到 `UVK5DigManager`
 
-```powershell
-python scripts/analyze_udp_capture.py ft4-only.pcapng ft8-only.pcapng
-```
+如果这 4 件事里有任何一件不满足，请先停住。  
+If any of these 4 conditions is not true, stop here first.
 
-你应该重点确认：
+## 用哪两个样本 / Which Two Samples To Use
 
-- `FT4` 是否到达 `5957`
-- `FT8` 是否到达 `5957`
-- `59 57 04 00` 是否只出现在 `FT4`
-- `59 57 08 00` 是否只出现在 `FT8`
+直接使用仓库里的这两个文件：  
+Use these two files directly from the repository:
 
-## 第二步：导出重放样本集 / Step 2: Export Replay Sequences
+- [samples/replay/ft8-replay.json](/F:/Codex/CEC固件改装FT4/samples/replay/ft8-replay.json)
+- [samples/replay/ft4-replay.json](/F:/Codex/CEC固件改装FT4/samples/replay/ft4-replay.json)
 
-```powershell
-python scripts/export_udp_replay.py --input ft4-only.pcapng --mode FT4 --output ft4-replay.json
-python scripts/export_udp_replay.py --input ft8-only.pcapng --mode FT8 --output ft8-replay.json
-```
-
-## 第三步：先做 dry-run / Step 3: Dry Run First
+## 第一步：先做 dry-run / Step 1: Dry Run First
 
 ```powershell
-python scripts/replay_udp_sequence.py --input ft8-replay.json --dry-run
-python scripts/replay_udp_sequence.py --input ft4-replay.json --dry-run
+python scripts\replay_udp_sequence.py --input samples\replay\ft8-replay.json --dry-run
+python scripts\replay_udp_sequence.py --input samples\replay\ft4-replay.json --dry-run
 ```
 
-这一步只打印包顺序，不真的发包。  
-This step only prints the packet order and does not actually send anything.
+这一步只是检查顺序，不会真正发包。  
+This step only checks the sequence and does not send packets yet.
 
-## 第四步：先重放 FT8，再重放 FT4 / Step 4: Replay FT8 First, Then FT4
+## 第二步：先重放 FT8 / Step 2: Replay FT8 First
 
 ```powershell
-python scripts/replay_udp_sequence.py --input ft8-replay.json --fast-replay
-python scripts/replay_udp_sequence.py --input ft4-replay.json --fast-replay
+python scripts\replay_udp_sequence.py --input samples\replay\ft8-replay.json --fast-replay
 ```
 
-优先观察：
+请观察：  
+Please observe:
+
+- `DigiManager` 界面是否有变化  
+  Whether the `DigiManager` UI changes
+- `PTT` 是否动作  
+  Whether `PTT` changes state
+- 电台是否出现接近真实 `FT8` 的发射反应  
+  Whether the radio shows behavior similar to real `FT8` transmit
+
+## 第三步：再重放 FT4 / Step 3: Replay FT4 Next
+
+```powershell
+python scripts\replay_udp_sequence.py --input samples\replay\ft4-replay.json --fast-replay
+```
+
+请继续观察同样三件事：  
+Observe the same three things again:
 
 - `DigiManager` 界面变化  
   `DigiManager` UI changes
-- `PTT` 是否响应  
-  Whether `PTT` responds
-- 电台是否表现出与真实 `FT8` 相近的发射行为  
-  Whether the radio behaves similarly to real `FT8`
+- `PTT` 动作  
+  `PTT` action
+- 电台发射相关反应  
+  Radio transmit-related response
 
-## 第五步：单包验证模式差异 / Step 5: Replay Single Marker Packets
+## 第四步：做单包模式对比 / Step 4: Compare Single Marker Packets
 
 ```powershell
-python scripts/replay_udp_sequence.py --input ft4-replay.json --single-packet-tag ft4_mode_marker
-python scripts/replay_udp_sequence.py --input ft8-replay.json --single-packet-tag ft8_mode_marker
+python scripts\replay_udp_sequence.py --input samples\replay\ft8-replay.json --single-packet-tag ft8_mode_marker
+python scripts\replay_udp_sequence.py --input samples\replay\ft4-replay.json --single-packet-tag ft4_mode_marker
 ```
 
-这一步用来观察 `04 00` 和 `08 00` 是否触发不同响应。  
-This step checks whether `04 00` and `08 00` trigger different responses.
+这一步主要看：  
+This step mainly checks:
 
-## 结果记录 / What To Record
+- `ft8_mode_marker` 是否单独就能触发反应  
+  Whether `ft8_mode_marker` alone triggers a response
+- `ft4_mode_marker` 是否单独就能触发反应  
+  Whether `ft4_mode_marker` alone triggers a response
 
-请至少记录：
+## 你要记录什么 / What To Record
 
-- `FT8` 重放是否有响应
-- `FT4` 重放是否有响应
-- 单发 `ft4_mode_marker` 是否有响应
-- 单发 `ft8_mode_marker` 是否有响应
+至少记录下面这些：  
+At minimum, record these:
 
-建议按这个模板整理：  
+- `FT8` 重放有没有反应  
+  Whether `FT8` replay produced a response
+- `FT4` 重放有没有反应  
+  Whether `FT4` replay produced a response
+- `ft8_mode_marker` 单发有没有反应  
+  Whether single `ft8_mode_marker` produced a response
+- `ft4_mode_marker` 单发有没有反应  
+  Whether single `ft4_mode_marker` produced a response
+
+建议直接按这个模板填写：  
 Use this template if possible:
 
 [docs/UDP_REPLAY_BENCH_TEMPLATE.md](/F:/Codex/CEC固件改装FT4/docs/UDP_REPLAY_BENCH_TEMPLATE.md)

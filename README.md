@@ -1,173 +1,159 @@
 # linear-k6-ft4
 
-中文和 English 并排提供。后续项目文档默认保持中英双语。  
-Chinese and English are provided side by side. Future project documentation should stay bilingual by default.
+中文和 English 并排提供。后续文档默认继续保持双语。  
+Chinese and English are provided side by side. Future documentation should stay bilingual by default.
+
+## 现在测试什么 / What We Are Testing Now
+
+当前 GitHub 仓库只保留**当前阶段**：`UVK5DigManager` 的本机 UDP 台架重放测试。  
+This repository now keeps only the **current phase**: local UDP bench replay testing for `UVK5DigManager`.
+
+当前要回答的问题只有一个：  
+There is only one current question:
+
+- `FT8` 的已知正常样本能不能通过重放触发 `DigiManager` 和电台反应？  
+  Can a known-good `FT8` sample trigger `DigiManager` and radio response when replayed?
+- `FT4` 的真实抓包样本重放后，反应和 `FT8` 有什么不同？  
+  After replaying a real `FT4` capture, what response differs from `FT8`?
+
+已经完成的旧阶段，例如 COM 拓扑梳理、串口抓包、UDP 现场抓包说明，已从公开测试入口移除。  
+Completed older phases such as COM topology work, serial capture, and UDP live-capture onboarding have been removed from the public tester entry points.
 
 ## 如果你是测试者，从这里开始 / If You Are A Tester, Start Here
 
-如果你只是来帮忙抓包，请先按 **UDP 路线** 走，不要默认自己需要串口代理。  
-If you are here only to help with capture, start with the **UDP path** and do not assume you need a serial proxy.
+你现在**不需要先抓包**，也不需要先研究协议。  
+Right now you do **not** need to capture packets first, and you do not need to study the protocol first.
 
-### 入口 1：我只是来帮忙抓包 / Path 1: I Only Want To Help Capture
+你只需要做这 4 步：  
+You only need these 4 steps:
 
-1. 先确认 `WSJT-X` 和 `DigiManager` 当前用的是不是本机 `UDP`。  
-   First confirm whether `WSJT-X` and `DigiManager` are using local `UDP`.
-2. 观察 `2237 / 4532 / 5957` 这几个关键端口。  
-   Observe the key ports `2237 / 4532 / 5957`.
-3. 用 Windows loopback capture 抓 `WSJT-X ↔ DigiManager` 的本机 `UDP`。  
-   Use Windows loopback capture to record the local `UDP` traffic between `WSJT-X` and `DigiManager`.
-4. 只有在 UDP 不足以解释行为时，才回头看设备侧串口控制面。  
-   Only fall back to the device-side serial control path if the UDP traffic is not enough to explain the behavior.
+1. 准备台架环境：`假负载 / 无天线`  
+   Prepare a safe bench: `dummy load / no antenna`
+2. 打开 `UVK5DigManager`，确认电台已连接  
+   Open `UVK5DigManager` and confirm the radio is connected
+3. 用仓库自带的 `FT8` 和 `FT4` 样本做 UDP 重放  
+   Replay the included `FT8` and `FT4` UDP samples
+4. 记录 `DigiManager UI / PTT / 电台反应`，然后提交结果  
+   Record `DigiManager UI / PTT / radio response`, then submit the result
 
-请先看这里：  
-Start here:
+## 测试者先看这里 / Tester Entry Points
 
-- UDP 快速上手 / UDP quick start: [docs/UDP_CAPTURE_QUICKSTART.md](/F:/Codex/CEC固件改装FT4/docs/UDP_CAPTURE_QUICKSTART.md)
-- UDP 抓包手册 / UDP capture guide: [docs/UDP_LOOPBACK_CAPTURE_GUIDE.md](/F:/Codex/CEC固件改装FT4/docs/UDP_LOOPBACK_CAPTURE_GUIDE.md)
-- 端口观察模板 / Port observation template: [docs/UDP_PORT_OBSERVATION_TEMPLATE.md](/F:/Codex/CEC固件改装FT4/docs/UDP_PORT_OBSERVATION_TEMPLATE.md)
-- UDP 抓包结果模板 / UDP capture report template: [docs/UDP_CAPTURE_REPORT_TEMPLATE.md](/F:/Codex/CEC固件改装FT4/docs/UDP_CAPTURE_REPORT_TEMPLATE.md)
-- UDP 重放台架快速上手 / UDP replay bench quick start: [docs/UDP_REPLAY_QUICKSTART.md](/F:/Codex/CEC固件改装FT4/docs/UDP_REPLAY_QUICKSTART.md)
+- 当前测试步骤 / Current test steps: [docs/UDP_REPLAY_QUICKSTART.md](/F:/Codex/CEC固件改装FT4/docs/UDP_REPLAY_QUICKSTART.md)
+- 结果填写模板 / Result template: [docs/UDP_REPLAY_BENCH_TEMPLATE.md](/F:/Codex/CEC固件改装FT4/docs/UDP_REPLAY_BENCH_TEMPLATE.md)
+- 现成 FT4 样本 / Included FT4 sample: [samples/replay/ft4-replay.json](/F:/Codex/CEC固件改装FT4/samples/replay/ft4-replay.json)
+- 现成 FT8 样本 / Included FT8 sample: [samples/replay/ft8-replay.json](/F:/Codex/CEC固件改装FT4/samples/replay/ft8-replay.json)
 
-### 入口 2：串口抓包是第二阶段 / Path 2: Serial Capture Is Phase Two
+## 最短可执行流程 / Shortest Working Procedure
 
-如果第一轮 UDP 抓包已经能解释 `FT4` 行为，就不要再继续设备侧串口抓包。  
-If the first round of UDP capture already explains the `FT4` behavior, do not continue to device-side serial capture.
+### 1. 安全边界 / Safety Boundary
 
-只有在这些情况出现时，才继续看串口路线：  
-Only use the serial path if one of these becomes true:
+只在下面条件下继续：  
+Only continue under these conditions:
 
-- `UDP` 流量不足以解释 DigiManager 如何驱动洁净发射  
-  The `UDP` traffic is not enough to explain how DigiManager drives the clean transmit path
-- `FT4` 发射关键行为没有体现在 `UDP` 面  
-  The key `FT4` transmit behavior does not appear in the `UDP` layer
-- 必须进一步观察 `DigiManager ↔ CEC/K5` 的设备控制流  
-  You must go deeper into the `DigiManager ↔ CEC/K5` device-side control flow
+- `假负载 / Dummy load`
+- `无天线 / No antenna`
+- `有人值守 / Attended bench test`
 
-串口路线保留在这里：  
-The serial fallback documents remain here:
+### 2. 打开软件 / Open The Software
 
-- [docs/SERIAL_CAPTURE_GUIDE.md](/F:/Codex/CEC固件改装FT4/docs/SERIAL_CAPTURE_GUIDE.md)
-- [docs/CAPTURE_REPORT_TEMPLATE.md](/F:/Codex/CEC固件改装FT4/docs/CAPTURE_REPORT_TEMPLATE.md)
-- [docs/COM_TOPOLOGY_HELP_TEMPLATE.md](/F:/Codex/CEC固件改装FT4/docs/COM_TOPOLOGY_HELP_TEMPLATE.md)
+- 打开 `UVK5DigManager`
+- 确认电台连接正常
+- 这一步**不要求打开 `WSJT-X`**
 
-## 测试者的最小成功标准 / Minimum Success Standard For Testers
+- Open `UVK5DigManager`
+- Confirm the radio is connected
+- You do **not** need `WSJT-X` for this phase
 
-第一次测试不要求你立刻提交完整 `pcapng`。只要你能确认并回传下面这些信息，就已经有价值：  
-Your first test does not need to produce a complete `pcapng` immediately. It is already useful if you can send back these facts:
+### 3. 先做不发包检查 / Dry Run First
 
-```text
-WSJT-X PTT = VOX?
-WSJT-X UDPServerPort = ?
-WSJT-X SendSymPort = ?
-DigiManager UDP port = ?
-wsjtx.exe live UDP port = ?
+```powershell
+python scripts\replay_udp_sequence.py --input samples\replay\ft8-replay.json --dry-run
+python scripts\replay_udp_sequence.py --input samples\replay\ft4-replay.json --dry-run
 ```
 
-如果你还没装抓包工具，也没有关系，先回传端口观察结果即可。  
-If you have not installed the capture tool yet, that is fine. The port-observation result is already useful.
+这一步只打印顺序，不真正发 UDP。  
+This only prints packet order and does not send UDP yet.
 
-## 抓包前后长什么样 / What The Setup Looks Like Before And After
+### 4. 先重放 FT8，再重放 FT4 / Replay FT8 First, Then FT4
 
-抓包前 / Before capture:
-
-```text
-WSJT-X -> local UDP -> DigiManager
+```powershell
+python scripts\replay_udp_sequence.py --input samples\replay\ft8-replay.json --fast-replay
+python scripts\replay_udp_sequence.py --input samples\replay\ft4-replay.json --fast-replay
 ```
 
-抓包时 / During capture:
+观察这几件事：  
+Observe these items:
 
-```text
-WSJT-X -> local UDP -> DigiManager
-           ^
-           |
-   loopback packet capture
+- `DigiManager` 界面有没有变化  
+  Does the `DigiManager` UI change?
+- `PTT` 有没有动作  
+  Is there any `PTT` action?
+- 电台有没有发射相关反应  
+  Does the radio show any transmit-related behavior?
+
+### 5. 再做单包模式标记对比 / Compare Single Marker Packets
+
+```powershell
+python scripts\replay_udp_sequence.py --input samples\replay\ft4-replay.json --single-packet-tag ft4_mode_marker
+python scripts\replay_udp_sequence.py --input samples\replay\ft8-replay.json --single-packet-tag ft8_mode_marker
 ```
 
-这里的重点不是改业务逻辑，而是在原链路上做**无侵入观察**。  
-The point is not to change the behavior. We are doing **non-invasive observation** on the original link.
+这一轮主要看：  
+This round mainly checks:
 
-## 给测试者的推荐顺序 / Recommended Order For Testers
+- `04 00` 和 `08 00` 是否触发不同反应  
+  Whether `04 00` and `08 00` trigger different responses
 
-1. 打开 [docs/UDP_CAPTURE_QUICKSTART.md](/F:/Codex/CEC固件改装FT4/docs/UDP_CAPTURE_QUICKSTART.md)  
-   Open [docs/UDP_CAPTURE_QUICKSTART.md](/F:/Codex/CEC固件改装FT4/docs/UDP_CAPTURE_QUICKSTART.md)
-2. 运行 `python scripts/observe_udp_ports.py`  
-   Run `python scripts/observe_udp_ports.py`
-3. 回传端口观察结果，确认 `2237 / 4532 / 5957` 的现场关系  
-   Send back the port-observation result and confirm the live relationship between `2237 / 4532 / 5957`
-4. 安装 `Npcap` / `Wireshark` 或 `tshark`  
-   Install `Npcap` / `Wireshark` or `tshark`
-5. 按 [docs/UDP_LOOPBACK_CAPTURE_GUIDE.md](/F:/Codex/CEC固件改装FT4/docs/UDP_LOOPBACK_CAPTURE_GUIDE.md) 抓 `startup / idle / decode / vox_tx_start / tx_symbols / tx_end`  
-   Follow [docs/UDP_LOOPBACK_CAPTURE_GUIDE.md](/F:/Codex/CEC固件改装FT4/docs/UDP_LOOPBACK_CAPTURE_GUIDE.md) to capture `startup / idle / decode / vox_tx_start / tx_symbols / tx_end`
+## 你要回报什么 / What You Should Report Back
 
-## 这个仓库是做什么的 / What This Repository Is For
+至少告诉我们这些：  
+At minimum, report these:
 
-这个仓库的目标是保留 `CEC + DigiManager` 的洁净数字发射链，并把它推进到线性卫星上的 `FT4` 实机测试。  
-This repository aims to preserve the clean `CEC + DigiManager` digital transmit chain and move it toward real-radio `FT4` testing on linear satellites.
+- `FT8` 重放有没有反应  
+  Whether `FT8` replay produced a response
+- `FT4` 重放有没有反应  
+  Whether `FT4` replay produced a response
+- `ft8_mode_marker` 单发有没有反应  
+  Whether single `ft8_mode_marker` produced a response
+- `ft4_mode_marker` 单发有没有反应  
+  Whether single `ft4_mode_marker` produced a response
+- 你的测试环境是不是 `假负载 / 无天线`  
+  Whether your bench used `dummy load / no antenna`
 
-当前仓库主要包含两类成果：  
-The repository currently contains two main things:
+请优先按这个模板提交：  
+Please submit using this template if possible:
 
-- 一个 FT4-first 的卫星控频桥 `sat-bridge`  
-  An FT4-first satellite control bridge called `sat-bridge`
-- 一套给测试者使用的抓包和观察工具  
-  A set of capture and observation tools for testers
+[docs/UDP_REPLAY_BENCH_TEMPLATE.md](/F:/Codex/CEC固件改装FT4/docs/UDP_REPLAY_BENCH_TEMPLATE.md)
 
-## 当前目标 / Current Goal
+## 当前仓库保留的工具 / Tools Kept For The Current Phase
 
-当前最重要的目标有两个：  
-The two most important current goals are:
-
-- 让 `SatPC32 -> sat-bridge -> DigiManager -> CEC/K5` 这条 FT4 控制链跑起来  
-  Make `SatPC32 -> sat-bridge -> DigiManager -> CEC/K5` work as an FT4 control path
-- 确认 `WSJT-X ↔ DigiManager` 之间的实际本机 `UDP` 交互  
-  Determine the actual local `UDP` interaction between `WSJT-X` and `DigiManager`
-
-## 硬性约束 / Hard Constraints
-
-- 不允许退回模拟音频 `SSB` 发射  
-  No fallback to analog `SSB` audio injection
-- 发射过程中也要连续平滑控频  
-  Retuning must continue smoothly during TX
-- 如果现有 DigiManager 洁净链承载不了 FT4，本项目只停在控制层打通，不做模拟音频替代  
-  If the existing DigiManager clean chain cannot carry FT4, the project stops at the control layer instead of adding an analog audio workaround
-
-## 工具 / Tools
-
-- `python scripts/observe_udp_ports.py`  
-  读取 `WSJT-X.ini` 并观察 `2237 / 4532 / 5957` 的现场占用情况  
-  Read `WSJT-X.ini` and observe the live bindings for `2237 / 4532 / 5957`
 - `python scripts/analyze_udp_capture.py <pcapng> [<pcapng> ...]`  
-  直接解析 `pcapng`，输出 `2237 / 5957` 摘要和 `FT4 vs FT8` 差异  
-  Parse `pcapng` directly and print `2237 / 5957` summaries plus `FT4 vs FT8` differences
+  解析抓包并输出 `FT4 vs FT8` 差异  
+  Parse captures and print `FT4 vs FT8` differences
 - `python scripts/export_udp_replay.py --input <pcapng> --mode FT4|FT8 --output <json>`  
-  从 `5957` 真实样本导出可重放的 JSON 序列  
-  Export replayable JSON sequences from real `5957` samples
+  从真实抓包导出可重放样本  
+  Export replayable samples from real captures
 - `python scripts/replay_udp_sequence.py --input <json> [--dry-run] [--fast-replay]`  
-  在本机台架上向 `127.0.0.1:5957` 重放样本集  
-  Replay sample sequences toward `127.0.0.1:5957` on the local bench
-- `python scripts/list_serial_topology.py`  
-  保留为第二阶段设备侧串口排查工具  
-  Kept as a second-stage tool for device-side serial investigation
-- `python scripts/serial_capture_proxy.py ...`  
-  保留为第二阶段串口透明代理  
-  Kept as the second-stage transparent serial proxy
+  向 `127.0.0.1:5957` 重放样本  
+  Replay samples toward `127.0.0.1:5957`
 
-## 配置 / Configuration
+## 这一步不再要求什么 / What This Phase No Longer Requires
 
-配置示例见 [sat_bridge.example.toml](/F:/Codex/CEC固件改装FT4/sat_bridge.example.toml)。  
-See [sat_bridge.example.toml](/F:/Codex/CEC固件改装FT4/sat_bridge.example.toml) for the configuration example.
+当前公开测试流程**不再要求**：  
+The public test flow **no longer requires**:
+
+- 重新做 COM 拓扑梳理  
+  Repeating COM topology work
+- 重新做串口抓包  
+  Repeating serial capture
+- 重新做现场 UDP 抓包  
+  Repeating live UDP capture
+
+如果后续需要回到这些旧阶段，会在仓库里重新引入。  
+If we need to return to those older phases later, they will be reintroduced deliberately.
 
 ## 验证 / Validation
 
 ```powershell
 $env:PYTHONDONTWRITEBYTECODE='1'; python -m unittest discover -s tests -v
 ```
-
-## 当前限制 / Current Limitations
-
-- 当前首选抓包路线依赖 Windows loopback capture 工具  
-  The preferred capture path currently depends on Windows loopback capture tools
-- 当前 `pcapng` 解析器只覆盖本项目需要的最小 `UDP` 场景  
-  The current `pcapng` parser only covers the minimum `UDP` scenarios needed by this project
-- 设备侧串口控制面仍保留，但降级为第二阶段路线  
-  The device-side serial control path still exists, but it is now a phase-two path

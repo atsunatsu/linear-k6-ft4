@@ -1,6 +1,6 @@
 ---
 name: Tester Problem / 测试问题反馈
-about: Report a blocker during UDP port observation or loopback UDP capture.
+about: Report a blocker while running the current FT8/FT4 replay bench test.
 title: "[tester-problem] "
 labels: ["tester-problem"]
 assignees: []
@@ -8,31 +8,33 @@ assignees: []
 
 ## Which Step Failed / 哪一步出了问题
 
-- [ ] I could not confirm the live UDP ports / 我无法确认现场 UDP 端口
-- [ ] I could not run the UDP port observation script / 我无法运行 UDP 端口观察脚本
-- [ ] I have not installed loopback capture tools yet / 我还没装 loopback 抓包工具
-- [ ] I installed the tool but could not see loopback traffic / 已安装工具但看不到 loopback 流量
-- [ ] I could not trigger clear UDP traffic during FT4 actions / 我无法在 FT4 动作时触发明显 UDP 流量
-- [ ] I captured traffic but do not know whether it is correct / 我抓到流量了但不知道是否正确
+- [ ] I could not prepare a safe dummy-load bench / 我没法准备好假负载台架
+- [ ] `UVK5DigManager` did not open normally / `UVK5DigManager` 没有正常打开
+- [ ] The radio did not connect to `UVK5DigManager` / 电台没有连上 `UVK5DigManager`
+- [ ] I could not run the dry-run step / 我无法运行 dry-run
+- [ ] I could not run `FT8` replay / 我无法运行 `FT8` 重放
+- [ ] I could not run `FT4` replay / 我无法运行 `FT4` 重放
+- [ ] I could not run the single marker test / 我无法运行单包模式标记测试
+- [ ] I do not know how to judge the result / 我不知道该怎么判断结果
 - [ ] Other / 其他
 
-## Port Facts / 端口事实
+## What I Ran / 我运行了什么
 
 ```text
-WSJT-X PTT = ?
-WSJT-X UDPServerPort = ?
-WSJT-X SendSymPort = ?
-DigiManager UDP port = ?
-wsjtx.exe live UDP port = ?
+python scripts\replay_udp_sequence.py --input samples\replay\ft8-replay.json ...
+python scripts\replay_udp_sequence.py --input samples\replay\ft4-replay.json ...
 ```
 
-## Screenshots Or Logs / 截图或日志
+## What Happened / 实际发生了什么
 
-- [ ] WSJT-X settings screenshot / WSJT-X 设置截图
-- [ ] DigiManager UDP settings screenshot / DigiManager UDP 设置截图
-- [ ] `logs/udp-port-observation.json`
-- [ ] `pcapng`
+- 
+
+## Screenshots Or Photos / 截图或照片
+
+- [ ] `UVK5DigManager` screenshot / `UVK5DigManager` 截图
+- [ ] Radio front panel photo / 电台前面板照片
+- [ ] Console output / 命令行输出
 
 ## One-Sentence Conclusion / 一句话总结
 
--  
+- 

@@ -1,40 +1,41 @@
-# UDP 重放台架记录模板 / UDP Replay Bench Template
+# UDP Replay Bench Template / UDP 重放台架记录模板
 
 ## 基本信息 / Basic Information
 
 - 测试日期 / Test date:
 - 测试者 / Tester:
+- `UVK5DigManager` 版本 / `UVK5DigManager` version:
+- 电台型号 / Radio model:
 - 假负载 / Dummy load:
 - 无天线 / No antenna:
 
-## 输入样本 / Input Sequences
+## 使用的样本 / Samples Used
 
-- `FT4` 样本文件 / FT4 replay JSON:
-- `FT8` 样本文件 / FT8 replay JSON:
+- `FT8` 样本 / FT8 sample: `samples/replay/ft8-replay.json`
+- `FT4` 样本 / FT4 sample: `samples/replay/ft4-replay.json`
 
-## FT8 重放结果 / FT8 Replay Result
+## FT8 整段重放结果 / FT8 Full Replay Result
 
-- 是否有 `DigiManager` UI 响应？  
-  Did `DigiManager` show a UI response?
-- 是否有 `PTT` 响应？  
-  Was there a `PTT` response?
-- 电台是否出现与真实 `FT8` 接近的发射表现？  
-  Did the radio show behavior similar to real `FT8` transmit?
+- `DigiManager` 界面有没有变化 / Did the `DigiManager` UI change?
+- `PTT` 有没有动作 / Was there any `PTT` action?
+- 电台有没有发射相关反应 / Did the radio show any transmit-related response?
 
-## FT4 重放结果 / FT4 Replay Result
+## FT4 整段重放结果 / FT4 Full Replay Result
 
-- 是否有 `DigiManager` UI 响应？  
-  Did `DigiManager` show a UI response?
-- 是否有 `PTT` 响应？  
-  Was there a `PTT` response?
-- 电台是否有任何发射相关动作？  
-  Did the radio show any transmit-related behavior?
+- `DigiManager` 界面有没有变化 / Did the `DigiManager` UI change?
+- `PTT` 有没有动作 / Was there any `PTT` action?
+- 电台有没有发射相关反应 / Did the radio show any transmit-related response?
 
-## 单包模式标记结果 / Single Marker Replay Result
+## 单发模式标记结果 / Single Marker Result
 
-- `ft4_mode_marker` 响应：
-- `ft8_mode_marker` 响应：
+- `ft8_mode_marker` 单发结果 / Single `ft8_mode_marker` result:
+- `ft4_mode_marker` 单发结果 / Single `ft4_mode_marker` result:
 
 ## 一句话结论 / One-Sentence Conclusion
 
--  
+- 
+
+## 可选补充 / Optional Notes
+
+- 有没有和真实 `FT8` 行为接近 / Did anything resemble real `FT8` behavior?
+- `FT4` 和 `FT8` 的最大差别是什么 / What was the biggest difference between `FT4` and `FT8`?
