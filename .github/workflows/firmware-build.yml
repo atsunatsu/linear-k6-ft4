@@ -43,6 +43,7 @@ jobs:
             echo
             echo "commit=${GITHUB_SHA}"
             echo "enable_ft4_clean_tx=1"
+            echo "base_version=CEC_0.3q"
             echo "recommended_file=linear-k6-ft4-current-bench.packed.bin"
             echo
             ls -lh release-assets
@@ -56,6 +57,7 @@ jobs:
           ## What this is
           - Bench firmware for `uvk5cec-0.3q`
           - Includes `ENABLE_FT4_CLEAN_TX=1`
+          - Base version string: `CEC_0.3q`
           - Intended for UART bench testing only
 
           ## What this is not
