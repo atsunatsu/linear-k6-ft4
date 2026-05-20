@@ -1,0 +1,96 @@
+name: firmware-build
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Build firmware Docker image
+        run: docker build -t linear-k6-ft4-bench ./uvk5cec-0.3q
+
+      - name: Compile firmware inside container
+        run: |
+          rm -rf uvk5cec-0.3q/compiled-firmware release-assets
+          mkdir -p uvk5cec-0.3q/compiled-firmware release-assets
+          docker run --rm \
+            -v "$GITHUB_WORKSPACE/uvk5cec-0.3q/compiled-firmware:/app/compiled-firmware" \
+            linear-k6-ft4-bench \
+            /bin/bash -lc "cd /app && make clean && make && cp firmware firmware.bin firmware.packed.bin compiled-firmware/"
+
+      - name: Prepare release assets
+        run: |
+          cp uvk5cec-0.3q/compiled-firmware/firmware release-assets/linear-k6-ft4-current-bench.elf
+          cp uvk5cec-0.3q/compiled-firmware/firmware.bin release-assets/linear-k6-ft4-current-bench.bin
+          cp uvk5cec-0.3q/compiled-firmware/firmware.packed.bin release-assets/linear-k6-ft4-current-bench.packed.bin
+
+          {
+            echo "Current bench firmware build"
+            echo
+            echo "commit=${GITHUB_SHA}"
+            echo "enable_ft4_clean_tx=1"
+            echo "recommended_file=linear-k6-ft4-current-bench.packed.bin"
+            echo
+            ls -lh release-assets
+          } > release-assets/build-summary.txt
+
+          cat > release-assets/release-notes.md <<'EOF'
+          # Current Bench Firmware
+
+          This release is the current **FT4 firmware UART bench** build.
+
+          ## What this is
+          - Bench firmware for `uvk5cec-0.3q`
+          - Includes `ENABLE_FT4_CLEAN_TX=1`
+          - Intended for UART bench testing only
+
+          ## What this is not
+          - Not a finished on-air FT4 firmware
+          - Not a DigiManager replacement release
+
+          ## Which file to flash
+          - Try `linear-k6-ft4-current-bench.packed.bin` first
+          - Use `linear-k6-ft4-current-bench.bin` only if your flashing tool needs the raw image
+
+          ## Safety
+          - Use a dummy load or disconnect the antenna
+          - Do not use this build on-air
+
+          ## After flashing
+          - Follow the tester guide in `docs/FT4_FIRMWARE_UART_BENCH.md`
+          EOF
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: current-bench-firmware
+          path: release-assets/*
+
+      - name: Publish current-bench release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete current-bench --yes --cleanup-tag || true
+          gh release create current-bench \
+            release-assets/linear-k6-ft4-current-bench.elf \
+            release-assets/linear-k6-ft4-current-bench.bin \
+            release-assets/linear-k6-ft4-current-bench.packed.bin \
+            release-assets/build-summary.txt \
+            --title "Current Bench Firmware" \
+            --notes-file release-assets/release-notes.md \
+            --prerelease \
+            --target "${GITHUB_SHA}"

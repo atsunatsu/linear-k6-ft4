@@ -7,28 +7,13 @@
 - Serial port:
 - Dummy load or no antenna confirmed:
 
-## 工具检查结果 / Tool Check Result
-- `check_uvk5cec_toolchain.py` output:
-- `python` found:
-- `arm-none-eabi-gcc` found:
-- `make` found:
-- `docker` found:
-
-## 固件编译结果 / Firmware Build Result
-- `build_uvk5cec_firmware.py --target auto` output:
-- Build succeeded:
-- Firmware file generated:
+## 下载与刷机 / Download And Flashing
+- Release page used:
+- Firmware file used:
+- Flashing tool or website:
 - Flashing succeeded:
 
-## 离线协议检查结果 / Offline Protocol Check Result
-- `mock_uvk5cec_ft4_responder.py` started:
-- `bootstrap version=...` seen:
-- `configure version=...` seen:
-- `start_ft4_tx status=0(OK)` seen:
-- `retune status=0(OK)` seen:
-- `stop_tx status=0(OK)` seen:
-
-## 真机 Bench 结果 / Real Bench Result
+## Bench 结果 / Bench Result
 - `send-ft4` command:
 - `retune` command:
 - `stop-tx` command:
@@ -46,4 +31,3 @@
 ```text
 Paste the important command output here.
 ```
-

@@ -2,7 +2,7 @@ blank_issues_enabled: false
 contact_links:
   - name: Current Test Guide / 当前测试说明
     url: https://github.com/atsunatsu/linear-k6-ft4/blob/main/README.md
-    about: Start here if you want to run the current FT8/FT4 replay bench test.
-  - name: UDP Replay Bench Quick Start / UDP 重放台架快速开始
-    url: https://github.com/atsunatsu/linear-k6-ft4/blob/main/docs/UDP_REPLAY_QUICKSTART.md
-    about: Follow this if you are ready to test with the included replay samples.
+    about: Start here if you want to run the current FT4 firmware UART bench test.
+  - name: Current Bench Release / 当前 bench 固件下载
+    url: https://github.com/atsunatsu/linear-k6-ft4/releases/tag/current-bench
+    about: Download the latest bench firmware before flashing and testing.
