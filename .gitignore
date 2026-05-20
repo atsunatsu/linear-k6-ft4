@@ -3,3 +3,11 @@ __pycache__/
 .pytest_cache/
 .coverage
 logs/
+/UVK5DigManager*.exe
+/UVK5DigManager*.zip
+/cec_0.3Q*.bin
+/cec_0.3q*.bin
+/real-0.3q*.bin
+/reverse/input/firmware/*.bin
+/reverse/input/digimanager/*.exe
+/reverse/input/digimanager/*.zip

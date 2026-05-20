@@ -1,111 +1,134 @@
 # linear-k6-ft4
 
 ## 当前阶段 / Current Stage
-当前公开测试只做一件事：
+当前主线已经切到**真实 0.3q 二进制逆向 + 最小动态验证**。
 
-- 验证 `uvk5cec-0.3q` 的 **FT4 firmware UART bench** 路径能不能在台架上工作
+这轮主要做两件事：
 
-现在**不测试**这些内容：
+- 找到真实 `0.3q` 在数字模式里**是谁把频率锁死**
+- 判断 DigiManager 在数字模式里是否持续发改频
 
-- DigiManager replay
-- 抓包
-- `WSJT-X` 自动联动
-- 上空口发射
+同时尽量回答：
 
-The only public test goal right now is:
+- 数字模式入口在哪里
+- 设频调用链大概怎么走
+- 外部控频入口是否还存在
 
-- verify that the **FT4 firmware UART bench** path in `uvk5cec-0.3q` works on the bench
+The project is now focused on **reverse-engineering the real 0.3q binaries plus minimal dynamic validation**.
 
-We are **not** testing:
+This phase now has two main goals:
 
-- DigiManager replay
-- packet capture
-- automatic `WSJT-X` integration
-- on-air transmission
+- find who locks frequency inside digital mode on the real `0.3q`
+- determine whether DigiManager keeps sending retune commands in digital mode
 
-## 我是测试者 / I Am A Tester
-如果你只是帮忙测试，**你不需要自己编译固件**。
+And, if possible, also answer:
 
-你现在只需要做这几件事：
+- where digital mode starts
+- how the frequency-setting path is structured
+- whether an external retune/control path still exists
 
-1. 去 Release 页面下载当前 bench 固件
-2. 用你平时的 UV-K5 刷机工具把固件写入电台
-3. 在项目文件夹里打开 `PowerShell`
-4. 运行 `send-ft4`
-5. 运行 `retune`
-6. 运行 `stop-tx`
-7. 按模板回传结果
+## 这阶段不做什么 / What This Phase Is Not
+现在**不**继续把公开源码树当成真实 `0.3q`。
+现在**不**让测试者刷 bench 固件。
+现在**不**继续走 DigiManager replay 公开测试流程。
 
-If you are only helping with testing, **you do not need to compile firmware yourself**.
+We are **not** treating the public source tree as the real `0.3q`.
+We are **not** asking testers to flash the old bench firmware in this phase.
+We are **not** using the DigiManager replay flow as the main public path.
 
-You only need to:
+## 你现在要准备什么 / What You Need Right Now
+请把真实输入材料放到仓库里。最推荐的是放到 `reverse/input` 下面；如果你只是临时分析，也可以直接放在仓库根目录：
 
-1. download the current bench firmware
-2. flash it with your usual UV-K5 flashing tool
-3. open `PowerShell` in the project folder
-4. run `send-ft4`
-5. run `retune`
-6. run `stop-tx`
-7. report the result with the template
+1. 真实 `0.3q` 固件 `bin`
+   放到 [reverse/input/firmware/README.md](/F:/Codex/CEC固件改装FT4/reverse/input/firmware/README.md) 说明的位置，或者临时直接放仓库根目录
+2. `UVK5DigManager.exe` 或 `UVK5DigManager_v1.0.zip`
+   放到 [reverse/input/digimanager/README.md](/F:/Codex/CEC固件改装FT4/reverse/input/digimanager/README.md) 说明的位置，或者临时直接放仓库根目录
+3. 现有 `FT4 / FT8` UDP replay JSON
+   这部分仓库里已经有了，会自动作为辅助证据使用
 
-测试者直接看这里：
+Please place the real inputs into the repo. The preferred location is `reverse/input`, but temporary root-level placement is also supported:
 
-- 固件下载 / Firmware download: [Current Bench Release](https://github.com/atsunatsu/linear-k6-ft4/releases/tag/current-bench)
-- 傻瓜教程 / Simple tester guide: [docs/FT4_FIRMWARE_UART_BENCH.md](/F:/Codex/CEC固件改装FT4/docs/FT4_FIRMWARE_UART_BENCH.md)
-- 结果模板 / Result template: [docs/FT4_FIRMWARE_UART_RESULT_TEMPLATE.md](/F:/Codex/CEC固件改装FT4/docs/FT4_FIRMWARE_UART_RESULT_TEMPLATE.md)
+1. the real `0.3q` firmware `bin`
+2. `UVK5DigManager.exe` or `UVK5DigManager_v1.0.zip`
+3. existing `FT4 / FT8` UDP replay JSON
 
-## 我是维护者 / I Am A Maintainer
-如果你负责源码、构建链、GitHub Actions 或离线联调，再看这些：
+The replay JSON files are already present in this repo and will be used automatically as supporting evidence.
 
-- `uvk5cec-0.3q`
-- `.github/workflows/firmware-build.yml`
-- `scripts/build_uvk5cec_firmware.py`
-- `scripts/check_uvk5cec_toolchain.py`
-- `scripts/mock_uvk5cec_ft4_responder.py`
+## 最短运行方法 / Shortest Way To Run
+在项目目录打开 `PowerShell`，然后运行：
 
-If you maintain the build chain or source code, then look at:
+```powershell
+python scripts\analyze_real_03q_reverse.py
+```
 
-- `uvk5cec-0.3q`
-- `.github/workflows/firmware-build.yml`
-- `scripts/build_uvk5cec_firmware.py`
-- `scripts/check_uvk5cec_toolchain.py`
-- `scripts/mock_uvk5cec_ft4_responder.py`
+脚本会自动：
 
-## 安全要求 / Safety Rules
-- 只允许接假负载，或彻底断开天线
-- 不允许上空口
-- 必须有人值守
+- 查找真实固件 `bin`
+- 查找 DigiManager 二进制
+- 结合现有 replay JSON
+- 生成逆向地图
 
-- dummy load or no antenna only
-- no on-air testing
-- attended bench only
+Open `PowerShell` in the project folder and run:
 
-## 公开测试命令 / Public Test Commands
-当前对测试者公开的命令只有这 3 个：
+```powershell
+python scripts\analyze_real_03q_reverse.py
+```
 
-- `send-ft4`
-- `retune`
-- `stop-tx`
+The script will automatically:
 
-The only public tester-facing commands right now are:
+- look for the real firmware `bin`
+- look for the DigiManager binary
+- use the existing replay JSON files
+- produce a reverse-engineering map
 
-- `send-ft4`
-- `retune`
-- `stop-tx`
+## 输出在哪里 / Where The Output Goes
+输出会写到：
 
-## 失败时回传什么 / What To Report If Something Fails
-请回传这些最基本的信息：
+- `logs/reverse/reverse-map.json`
+- `logs/reverse/reverse-map.md`
 
-- 你运行的命令
-- 屏幕上的完整输出
-- 电台有没有进入发射
-- 改频有没有生效
-- 停发后有没有回到安全状态
+These files are the current working outputs:
 
-Please report at least:
+- `logs/reverse/reverse-map.json`
+- `logs/reverse/reverse-map.md`
 
-- the exact command you ran
-- the full terminal output
-- whether the radio entered TX
-- whether retune worked
-- whether stop returned to a safe state
+## 我该先看哪份文档 / Which Document To Read First
+- 逆向快速上手 / reverse quick start:
+  [docs/REAL_03Q_REVERSE_QUICKSTART.md](/F:/Codex/CEC固件改装FT4/docs/REAL_03Q_REVERSE_QUICKSTART.md)
+- 动态改频验证 / dynamic retune check:
+  [docs/REAL_03Q_DYNAMIC_RETUNE.md](/F:/Codex/CEC固件改装FT4/docs/REAL_03Q_DYNAMIC_RETUNE.md)
+- 逆向结果模板 / reverse result template:
+  [docs/REAL_03Q_REVERSE_RESULT_TEMPLATE.md](/F:/Codex/CEC固件改装FT4/docs/REAL_03Q_REVERSE_RESULT_TEMPLATE.md)
+- 动态结果模板 / dynamic result template:
+  [docs/REAL_03Q_DYNAMIC_RETUNE_RESULT_TEMPLATE.md](/F:/Codex/CEC固件改装FT4/docs/REAL_03Q_DYNAMIC_RETUNE_RESULT_TEMPLATE.md)
+- 输入资产说明 / asset intake notes:
+  [reverse/README.md](/F:/Codex/CEC固件改装FT4/reverse/README.md)
+
+## 当前输出目标格式 / Current Output Targets
+这轮希望最终收敛成下面 5 个结论字段：
+
+- `digital_mode_entry`
+- `frequency_set_call_chain`
+- `lock_frequency_owner`
+- `external_retune_capability`
+- `recommended_next_step`
+
+动态验证阶段新增 3 个结论字段：
+
+- `digimanager_continuous_retune`
+- `firmware_applies_retune_in_digital_mode`
+- `lock_owner`
+
+This phase aims to reduce everything to these 5 fields:
+
+- `digital_mode_entry`
+- `frequency_set_call_chain`
+- `lock_frequency_owner`
+- `external_retune_capability`
+- `recommended_next_step`
+
+The dynamic validation step also adds:
+
+- `digimanager_continuous_retune`
+- `firmware_applies_retune_in_digital_mode`
+- `lock_owner`

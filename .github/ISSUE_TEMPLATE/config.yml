@@ -1,8 +1,8 @@
 blank_issues_enabled: false
 contact_links:
-  - name: Current Test Guide / 当前测试说明
+  - name: Current Reverse Guide / 当前逆向说明
     url: https://github.com/atsunatsu/linear-k6-ft4/blob/main/README.md
-    about: Start here if you want to run the current FT4 firmware UART bench test.
-  - name: Current Bench Release / 当前 bench 固件下载
-    url: https://github.com/atsunatsu/linear-k6-ft4/releases/tag/current-bench
-    about: Download the latest bench firmware before flashing and testing.
+    about: Start here if you want to work on the real 0.3q reverse-engineering and dynamic retune validation flow.
+  - name: Dynamic Retune Guide / 动态改频验证说明
+    url: https://github.com/atsunatsu/linear-k6-ft4/blob/main/docs/REAL_03Q_DYNAMIC_RETUNE.md
+    about: Use this when you are collecting the idle/TX dynamic captures and radio observations.

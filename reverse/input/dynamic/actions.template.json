@@ -1,0 +1,17 @@
+{
+  "idle_capture": {
+    "path": "reverse/input/dynamic/idle-retune.pcapng",
+    "retune_events_ms": [5000],
+    "description": "Digital mode idle; operator changed target/sub frequency once."
+  },
+  "tx_capture": {
+    "path": "reverse/input/dynamic/tx-retune.pcapng",
+    "retune_events_ms": [7000],
+    "description": "Digital mode TX; operator changed target/sub frequency once."
+  },
+  "radio_observation": {
+    "idle_frequency_change": "unknown",
+    "tx_frequency_change": "unknown",
+    "notes": "Use yes / no / temporary / unknown."
+  }
+}
