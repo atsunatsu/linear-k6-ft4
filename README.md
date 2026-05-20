@@ -1,11 +1,11 @@
 # linear-k6-ft4
 
 ## 当前阶段 / Current Stage
-当前公开测试阶段只有一个目标：
+当前公开测试只做一件事：
 
-- 验证 `uvk5cec-0.3q` 的 **FT4 firmware UART bench** 路径能不能在台架上跑通
+- 验证 `uvk5cec-0.3q` 的 **FT4 firmware UART bench** 路径能不能在台架上工作
 
-现在**不是**在测试：
+现在**不测试**这些内容：
 
 - DigiManager replay
 - 抓包
@@ -16,102 +16,71 @@ The only public test goal right now is:
 
 - verify that the **FT4 firmware UART bench** path in `uvk5cec-0.3q` works on the bench
 
-We are **not** currently testing:
+We are **not** testing:
 
 - DigiManager replay
 - packet capture
 - automatic `WSJT-X` integration
 - on-air transmission
 
-## 先分清角色 / First Pick Your Role
+## 我是测试者 / I Am A Tester
+如果你只是帮忙测试，**你不需要自己编译固件**。
 
-### 1. 我是测试者 / I Am A Tester
-如果你只是帮忙测试，请**不要自己编译固件**。
+你现在只需要做这几件事：
 
-你只需要：
+1. 去 Release 页面下载当前 bench 固件
+2. 用你平时的 UV-K5 刷机工具把固件写入电台
+3. 在项目文件夹里打开 `PowerShell`
+4. 运行 `send-ft4`
+5. 运行 `retune`
+6. 运行 `stop-tx`
+7. 按模板回传结果
 
-1. 去 GitHub Releases 下载当前 bench 固件
-2. 用你常用的 UV-K5 刷机工具把固件写进去
-3. 在项目目录里打开 `PowerShell`
-4. 运行 `send-ft4 / retune / stop-tx`
-5. 把结果按模板回传
-
-测试者只需要看：
-
-- 当前 bench 固件下载页 / Current bench firmware release: [Current Bench Release](https://github.com/atsunatsu/linear-k6-ft4/releases/tag/current-bench)
-- 测试教程 / Tester guide: [docs/FT4_FIRMWARE_UART_BENCH.md](/F:/Codex/CEC固件改装FT4/docs/FT4_FIRMWARE_UART_BENCH.md)
-- 结果模板 / Result template: [docs/FT4_FIRMWARE_UART_RESULT_TEMPLATE.md](/F:/Codex/CEC固件改装FT4/docs/FT4_FIRMWARE_UART_RESULT_TEMPLATE.md)
-
-If you are only helping with testing, **do not compile firmware yourself**.
+If you are only helping with testing, **you do not need to compile firmware yourself**.
 
 You only need to:
 
-1. download the current bench firmware from GitHub Releases
+1. download the current bench firmware
 2. flash it with your usual UV-K5 flashing tool
 3. open `PowerShell` in the project folder
-4. run `send-ft4 / retune / stop-tx`
-5. report the result
+4. run `send-ft4`
+5. run `retune`
+6. run `stop-tx`
+7. report the result with the template
 
-Tester entry points:
+测试者直接看这里：
 
-- Current bench firmware release: [Current Bench Release](https://github.com/atsunatsu/linear-k6-ft4/releases/tag/current-bench)
-- Tester guide: [docs/FT4_FIRMWARE_UART_BENCH.md](/F:/Codex/CEC固件改装FT4/docs/FT4_FIRMWARE_UART_BENCH.md)
-- Result template: [docs/FT4_FIRMWARE_UART_RESULT_TEMPLATE.md](/F:/Codex/CEC固件改装FT4/docs/FT4_FIRMWARE_UART_RESULT_TEMPLATE.md)
+- 固件下载 / Firmware download: [Current Bench Release](https://github.com/atsunatsu/linear-k6-ft4/releases/tag/current-bench)
+- 傻瓜教程 / Simple tester guide: [docs/FT4_FIRMWARE_UART_BENCH.md](/F:/Codex/CEC固件改装FT4/docs/FT4_FIRMWARE_UART_BENCH.md)
+- 结果模板 / Result template: [docs/FT4_FIRMWARE_UART_RESULT_TEMPLATE.md](/F:/Codex/CEC固件改装FT4/docs/FT4_FIRMWARE_UART_RESULT_TEMPLATE.md)
 
-### 2. 我是维护者 / I Am A Maintainer
-如果你负责编译、看源码、排查构建链，才需要：
+## 我是维护者 / I Am A Maintainer
+如果你负责源码、构建链、GitHub Actions 或离线联调，再看这些：
 
-- 本地工具链
-- Docker 构建
-- mock responder
-- GitHub Actions
+- `uvk5cec-0.3q`
+- `.github/workflows/firmware-build.yml`
+- `scripts/build_uvk5cec_firmware.py`
+- `scripts/check_uvk5cec_toolchain.py`
+- `scripts/mock_uvk5cec_ft4_responder.py`
 
-If you are maintaining the firmware or build chain, then you need:
+If you maintain the build chain or source code, then look at:
 
-- local toolchains
-- Docker build flow
-- the mock responder
-- GitHub Actions
+- `uvk5cec-0.3q`
+- `.github/workflows/firmware-build.yml`
+- `scripts/build_uvk5cec_firmware.py`
+- `scripts/check_uvk5cec_toolchain.py`
+- `scripts/mock_uvk5cec_ft4_responder.py`
 
-## 给测试者的最短说明 / Shortest Message For Testers
-测试者现在不需要：
-
-- 装编译工具
-- 本地编译固件
-- 改代码
-
-测试者现在只需要：
-
-1. 下载当前 Release 固件
-2. 刷机
-3. 安装 `pyserial`（如果缺少）
-4. 跑测试命令
-5. 回传结果
-
-Testers do not need to:
-
-- install build tools
-- compile firmware locally
-- change code
-
-Testers only need to:
-
-1. download the current release firmware
-2. flash the radio
-3. install `pyserial` if missing
-4. run the test commands
-5. report the result
-
-## 真机阶段不变的安全要求 / Safety Rules For Real Bench
-- 只允许 `假负载` 或 `断开天线`
+## 安全要求 / Safety Rules
+- 只允许接假负载，或彻底断开天线
 - 不允许上空口
 - 必须有人值守
 
-- `dummy load` or `no antenna` only
+- dummy load or no antenna only
 - no on-air testing
 - attended bench only
 
-## 当前公开接口 / Public Interfaces
+## 公开测试命令 / Public Test Commands
 当前对测试者公开的命令只有这 3 个：
 
 - `send-ft4`
@@ -124,19 +93,19 @@ The only public tester-facing commands right now are:
 - `retune`
 - `stop-tx`
 
-## 如果失败了，回传什么 / What To Report If Something Fails
-请优先把下面这些发回来：
+## 失败时回传什么 / What To Report If Something Fails
+请回传这些最基本的信息：
 
 - 你运行的命令
 - 屏幕上的完整输出
 - 电台有没有进入发射
 - 改频有没有生效
-- 停发有没有恢复安全状态
+- 停发后有没有回到安全状态
 
-Please send back:
+Please report at least:
 
 - the exact command you ran
-- the full output
+- the full terminal output
 - whether the radio entered TX
 - whether retune worked
 - whether stop returned to a safe state

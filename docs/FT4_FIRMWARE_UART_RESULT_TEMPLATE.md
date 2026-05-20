@@ -19,7 +19,7 @@
 - `stop-tx` command:
 - Did the radio enter TX:
 - Did retune change the frequency:
-- Did `stop-tx` return to safe state:
+- Did `stop-tx` return to a safe state:
 - Spectrum observation:
 
 ## 失败点 / Failure Point
@@ -27,7 +27,7 @@
 - Error message:
 - Anything unusual on screen:
 
-## 贴完整输出 / Paste Full Output
+## 完整输出 / Full Output
 ```text
 Paste the important command output here.
 ```
