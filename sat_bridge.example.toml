@@ -51,3 +51,25 @@ set_tx_frequency = ["python", "scripts/digctl.py", "set-tx", "{frequency_hz}"]
 set_radio_frequency = ["python", "scripts/digctl.py", "set-active", "{frequency_hz}"]
 set_mode = ["python", "scripts/digctl.py", "set-mode", "{mode}"]
 set_ptt = ["python", "scripts/digctl.py", "set-ptt", "{ptt}"]
+
+[ft4_clean_tx]
+enabled = true
+template_path = "samples/replay/ft4-replay.json"
+default_payload = "CQ FT4 BENCH OO00"
+transmission_index = 0
+timing_mode = "fast_replay"
+transport = "udp"
+destination_host = "127.0.0.1"
+destination_port = 5957
+command_timeout_seconds = 5.0
+tx_min_step_hz = 10
+tx_rate_limit_hz = 5.0
+tx_rate_limit_window_ms = 200
+
+[ft4_clean_tx.commands]
+# These hooks remain outside the transmitter payload path.
+# They let a bench setup retune the radio and toggle PTT while packet data
+# is delivered to the chosen FT4 clean-transmit transport.
+set_tx_frequency = ["python", "scripts/digctl.py", "set-tx", "{frequency_hz}"]
+set_ptt = ["python", "scripts/digctl.py", "set-ptt", "{ptt}"]
+send_packet = []

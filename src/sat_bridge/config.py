@@ -71,6 +71,30 @@ class AdapterConfig:
 
 
 @dataclass(slots=True)
+class Ft4CleanTxCommands:
+    set_tx_frequency: list[str] = field(default_factory=list)
+    set_ptt: list[str] = field(default_factory=list)
+    send_packet: list[str] = field(default_factory=list)
+
+
+@dataclass(slots=True)
+class Ft4CleanTxConfig:
+    enabled: bool
+    template_path: str
+    default_payload: str
+    transmission_index: int
+    timing_mode: str
+    transport: str
+    destination_host: str
+    destination_port: int
+    command_timeout_seconds: float
+    tx_min_step_hz: int
+    tx_rate_limit_hz: float
+    tx_rate_limit_window_ms: int
+    commands: Ft4CleanTxCommands
+
+
+@dataclass(slots=True)
 class AppConfig:
     bridge: BridgeConfig
     satellite_server: ServerConfig
@@ -78,6 +102,7 @@ class AppConfig:
     adapter: AdapterConfig
     wsjtx_serial_frontend: SerialFrontendConfig
     digimanager_serial_backend: SerialBackendConfig
+    ft4_clean_tx: Ft4CleanTxConfig
 
 
 def load_config(path: str | Path) -> AppConfig:
@@ -93,6 +118,8 @@ def load_config(path: str | Path) -> AppConfig:
     frontend = raw.get("wsjtx_serial_frontend", {})
     backend = raw.get("digimanager_serial_backend", {})
     backend_commands = backend.get("commands", {})
+    ft4_clean_tx = raw.get("ft4_clean_tx", {})
+    ft4_commands = ft4_clean_tx.get("commands", {})
 
     return AppConfig(
         bridge=BridgeConfig(
@@ -146,6 +173,27 @@ def load_config(path: str | Path) -> AppConfig:
                 set_radio_frequency=_read_template(backend_commands.get("set_radio_frequency")),
                 set_mode=_read_template(backend_commands.get("set_mode")),
                 set_ptt=_read_template(backend_commands.get("set_ptt")),
+            ),
+        ),
+        ft4_clean_tx=Ft4CleanTxConfig(
+            enabled=bool(ft4_clean_tx.get("enabled", True)),
+            template_path=str(ft4_clean_tx.get("template_path", "samples/replay/ft4-replay.json")),
+            default_payload=str(ft4_clean_tx.get("default_payload", "CQ FT4 BENCH OO00")),
+            transmission_index=int(ft4_clean_tx.get("transmission_index", 0)),
+            timing_mode=str(ft4_clean_tx.get("timing_mode", "fast_replay")).lower(),
+            transport=str(ft4_clean_tx.get("transport", "udp")).lower(),
+            destination_host=str(ft4_clean_tx.get("destination_host", "127.0.0.1")),
+            destination_port=int(ft4_clean_tx.get("destination_port", 5957)),
+            command_timeout_seconds=float(ft4_clean_tx.get("command_timeout_seconds", 5.0)),
+            tx_min_step_hz=int(ft4_clean_tx.get("tx_min_step_hz", bridge.get("tx_min_step_hz", 10))),
+            tx_rate_limit_hz=float(ft4_clean_tx.get("tx_rate_limit_hz", bridge.get("tx_rate_limit_hz", 5.0))),
+            tx_rate_limit_window_ms=int(
+                ft4_clean_tx.get("tx_rate_limit_window_ms", bridge.get("tx_rate_limit_window_ms", 200))
+            ),
+            commands=Ft4CleanTxCommands(
+                set_tx_frequency=_read_command(ft4_commands.get("set_tx_frequency")),
+                set_ptt=_read_command(ft4_commands.get("set_ptt")),
+                send_packet=_read_command(ft4_commands.get("send_packet")),
             ),
         ),
     )

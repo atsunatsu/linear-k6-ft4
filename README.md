@@ -209,6 +209,26 @@ Please submit using this template if possible:
   向 `127.0.0.1:5957` 重放样本  
   Replay samples toward `127.0.0.1:5957`
 
+## 实验性 FT4 发射器 / Experimental FT4 Transmitter
+
+仓库里现在额外带了一个**实验性** `FT4` 洁净发射原型。  
+The repository now also includes an **experimental** `FT4` clean transmitter prototype.
+
+它的目标是：
+- 不再依赖现有 `DigiManager` 的 `FT4` 通路
+- 用我们自己的 `FT4` 发射器做台架验证
+- 从一开始就保留实时改频接口
+
+Its goal is to:
+- Stop depending on the existing `DigiManager` FT4 path
+- Bench-test our own `FT4` transmitter
+- Keep real-time retune support from day one
+
+开发说明在这里：  
+Developer-facing notes are here:
+
+[docs/FT4_CLEAN_TX_BENCH.md](/F:/Codex/CEC固件改装FT4/docs/FT4_CLEAN_TX_BENCH.md)
+
 ## 这一步不再要求什么 / What This Phase No Longer Requires
 
 当前公开测试流程**不再要求**：  

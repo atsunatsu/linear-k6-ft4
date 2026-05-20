@@ -7,7 +7,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable
 
-from .config import HookCommands, SerialBackendConfig
+from .config import Ft4CleanTxConfig, HookCommands, SerialBackendConfig
+from .ft4_clean_tx import Ft4CleanTransmitter, Ft4ReplayTemplate, Ft4PacketBackend, UdpFt4Backend
 from .models import AdapterFeedback, BridgeSnapshot
 
 LOGGER = logging.getLogger(__name__)
@@ -305,6 +306,70 @@ class RecordingAdapter(DigiAdapter):
     async def set_ptt(self, enabled: bool, snapshot: BridgeSnapshot) -> AdapterFeedback:
         self.events.append(("set_ptt", enabled))
         return self._next_feedback("set_ptt")
+
+
+class Ft4CleanTxAdapter(DigiAdapter):
+    """Experimental FT4-only clean transmitter adapter.
+
+    This adapter replaces DigiManager's FT4 transmit role with an in-process
+    transmitter that replays a single FT4 transmission window derived from a
+    known-good capture template.
+    """
+
+    def __init__(
+        self,
+        config: Ft4CleanTxConfig,
+        *,
+        backend: Ft4PacketBackend | None = None,
+    ) -> None:
+        self._config = config
+        self._mode = "FT4"
+        self._payload = config.default_payload
+        self._transmitter = Ft4CleanTransmitter(
+            template=Ft4ReplayTemplate.from_path(
+                config.template_path,
+                transmission_index=config.transmission_index,
+            ),
+            backend=backend or UdpFt4Backend(config),
+            tx_min_step_hz=config.tx_min_step_hz,
+            tx_rate_limit_hz=config.tx_rate_limit_hz,
+            tx_rate_limit_window_ms=config.tx_rate_limit_window_ms,
+            timing_mode=config.timing_mode,
+        )
+
+    async def open(self) -> None:
+        await self._transmitter.open()
+
+    async def close(self) -> None:
+        await self._transmitter.close()
+
+    async def set_rx_frequency(self, frequency_hz: int, snapshot: BridgeSnapshot) -> AdapterFeedback:
+        return AdapterFeedback.ok("FT4 clean TX adapter ignores RX frequency updates")
+
+    async def set_tx_frequency(self, frequency_hz: int, snapshot: BridgeSnapshot) -> AdapterFeedback:
+        await self._transmitter.update_tx_frequency(frequency_hz)
+        return AdapterFeedback.ok()
+
+    async def set_radio_frequency(self, frequency_hz: int, snapshot: BridgeSnapshot) -> AdapterFeedback:
+        await self._transmitter.update_tx_frequency(frequency_hz)
+        return AdapterFeedback.ok()
+
+    async def set_mode(self, mode: str, snapshot: BridgeSnapshot) -> AdapterFeedback:
+        self._mode = mode.upper()
+        return AdapterFeedback.ok()
+
+    async def set_ptt(self, enabled: bool, snapshot: BridgeSnapshot) -> AdapterFeedback:
+        if enabled:
+            if self._mode != "FT4":
+                return AdapterFeedback.failed("FT4 clean TX adapter only supports FT4 transmit in v1")
+            await self._transmitter.start_ft4_tx(self._payload, snapshot.tx_frequency_hz)
+            return AdapterFeedback.ok()
+
+        await self._transmitter.stop_tx()
+        return AdapterFeedback.ok()
+
+    def set_payload(self, payload: str) -> None:
+        self._payload = payload
 
 
 async def _open_serial_port(port: str, baudrate: int, read_timeout: float, write_timeout: float):

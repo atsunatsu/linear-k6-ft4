@@ -4,7 +4,7 @@ import argparse
 import asyncio
 import logging
 
-from .adapters import DigiAdapter, HookAdapter, NullAdapter, SerialAdapter
+from .adapters import DigiAdapter, Ft4CleanTxAdapter, HookAdapter, NullAdapter, SerialAdapter
 from .bridge import BridgeController
 from .config import AppConfig, load_config
 from .rigctl import RigctlServer, ServerRole
@@ -23,6 +23,8 @@ def build_adapter(config: AppConfig) -> DigiAdapter:
         )
     if config.adapter.kind == "serial":
         return SerialAdapter(config.digimanager_serial_backend)
+    if config.adapter.kind == "ft4_clean_tx":
+        return Ft4CleanTxAdapter(config.ft4_clean_tx)
     raise ValueError(f"Unsupported adapter kind: {config.adapter.kind}")
 
 
