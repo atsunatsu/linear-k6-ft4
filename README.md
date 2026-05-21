@@ -1,134 +1,83 @@
 # linear-k6-ft4
 
-## 当前阶段 / Current Stage
-当前主线已经切到**真实 0.3q 二进制逆向 + 最小动态验证**。
+## 当前测试入口 / Current Public Test Route
+当前公开主线已经切到：
 
-这轮主要做两件事：
+- **真实 `0.3q` 固件二进制逆向补丁**
+- **patched 真实 `0.3q` bench 固件实机测试**
 
-- 找到真实 `0.3q` 在数字模式里**是谁把频率锁死**
-- 判断 DigiManager 在数字模式里是否持续发改频
+现在不要再走下面这些旧路线：
 
-同时尽量回答：
+- 旧的 replay 发布测试
+- 公开源码树直接编译固件
+- 旧的 bench 固件刷写流程
 
-- 数字模式入口在哪里
-- 设频调用链大概怎么走
-- 外部控频入口是否还存在
+The current public route is now:
 
-The project is now focused on **reverse-engineering the real 0.3q binaries plus minimal dynamic validation**.
+- **reverse patching the real `0.3q` binary**
+- **real-device testing of a patched real-0.3q bench firmware**
 
-This phase now has two main goals:
+Do not use the old replay route, the public-source build route, or the old bench firmware route anymore.
 
-- find who locks frequency inside digital mode on the real `0.3q`
-- determine whether DigiManager keeps sending retune commands in digital mode
+## 如果你是测试者 / If You Are A Tester
+你现在只需要做这一条路：
 
-And, if possible, also answer:
+1. 从维护者给你的位置下载 **patched 真实 0.3q bench 固件**
+2. 按实机测试教程刷机
+3. 做 3 个最小测试：
+   - FT8 是否仍能正常发射
+   - FT4 是否开始能真正发射
+   - 数字模式里改频是否生效
+4. 按模板回报结果
 
-- where digital mode starts
-- how the frequency-setting path is structured
-- whether an external retune/control path still exists
+先看这里：
 
-## 这阶段不做什么 / What This Phase Is Not
-现在**不**继续把公开源码树当成真实 `0.3q`。
-现在**不**让测试者刷 bench 固件。
-现在**不**继续走 DigiManager replay 公开测试流程。
+- [docs/REAL_03Q_PATCHED_FIRMWARE_TEST.md](/F:/Codex/CEC固件改装FT4/docs/REAL_03Q_PATCHED_FIRMWARE_TEST.md)
+- [docs/REAL_03Q_PATCHED_FIRMWARE_RESULT_TEMPLATE.md](/F:/Codex/CEC固件改装FT4/docs/REAL_03Q_PATCHED_FIRMWARE_RESULT_TEMPLATE.md)
 
-We are **not** treating the public source tree as the real `0.3q`.
-We are **not** asking testers to flash the old bench firmware in this phase.
-We are **not** using the DigiManager replay flow as the main public path.
+If you are a tester, start here:
 
-## 你现在要准备什么 / What You Need Right Now
-请把真实输入材料放到仓库里。最推荐的是放到 `reverse/input` 下面；如果你只是临时分析，也可以直接放在仓库根目录：
+- [docs/REAL_03Q_PATCHED_FIRMWARE_TEST.md](/F:/Codex/CEC固件改装FT4/docs/REAL_03Q_PATCHED_FIRMWARE_TEST.md)
+- [docs/REAL_03Q_PATCHED_FIRMWARE_RESULT_TEMPLATE.md](/F:/Codex/CEC固件改装FT4/docs/REAL_03Q_PATCHED_FIRMWARE_RESULT_TEMPLATE.md)
 
-1. 真实 `0.3q` 固件 `bin`
-   放到 [reverse/input/firmware/README.md](/F:/Codex/CEC固件改装FT4/reverse/input/firmware/README.md) 说明的位置，或者临时直接放仓库根目录
-2. `UVK5DigManager.exe` 或 `UVK5DigManager_v1.0.zip`
-   放到 [reverse/input/digimanager/README.md](/F:/Codex/CEC固件改装FT4/reverse/input/digimanager/README.md) 说明的位置，或者临时直接放仓库根目录
-3. 现有 `FT4 / FT8` UDP replay JSON
-   这部分仓库里已经有了，会自动作为辅助证据使用
+## 如果你是维护者 / If You Are Maintaining The Patch
+这条线现在的目标不是恢复完整源码，而是尽快做出一个可台架验证的 **patched 真实 0.3q bench 固件**：
 
-Please place the real inputs into the repo. The preferred location is `reverse/input`, but temporary root-level placement is also supported:
+- 放开数字模式下的锁频
+- 让 FT4 沿现有数字发射链进入发射
 
-1. the real `0.3q` firmware `bin`
-2. `UVK5DigManager.exe` or `UVK5DigManager_v1.0.zip`
-3. existing `FT4 / FT8` UDP replay JSON
+维护者先看：
 
-The replay JSON files are already present in this repo and will be used automatically as supporting evidence.
+- [docs/REAL_03Q_PATCH_WORKFLOW.md](/F:/Codex/CEC固件改装FT4/docs/REAL_03Q_PATCH_WORKFLOW.md)
+- [docs/REAL_03Q_REVERSE_QUICKSTART.md](/F:/Codex/CEC固件改装FT4/docs/REAL_03Q_REVERSE_QUICKSTART.md)
 
-## 最短运行方法 / Shortest Way To Run
-在项目目录打开 `PowerShell`，然后运行：
+Maintainers should start here:
 
-```powershell
-python scripts\analyze_real_03q_reverse.py
-```
+- [docs/REAL_03Q_PATCH_WORKFLOW.md](/F:/Codex/CEC固件改装FT4/docs/REAL_03Q_PATCH_WORKFLOW.md)
+- [docs/REAL_03Q_REVERSE_QUICKSTART.md](/F:/Codex/CEC固件改装FT4/docs/REAL_03Q_REVERSE_QUICKSTART.md)
 
-脚本会自动：
+## 现在仓库里有哪些关键产物 / Key Repo Outputs
+- 逆向地图：
+  - `logs/reverse/reverse-map.json`
+  - `logs/reverse/reverse-map.md`
+- 补丁工作区生成脚本：
+  - `scripts/build_real_03q_patch_workspace.py`
+- 补丁应用脚本：
+  - `scripts/apply_real_03q_patch.py`
+- 实机测试教程：
+  - `docs/REAL_03Q_PATCHED_FIRMWARE_TEST.md`
 
-- 查找真实固件 `bin`
-- 查找 DigiManager 二进制
-- 结合现有 replay JSON
-- 生成逆向地图
+## 安全边界 / Safety Boundary
+当前 patched 固件只允许：
 
-Open `PowerShell` in the project folder and run:
+- 假负载
+- 或断开天线的台架验证
 
-```powershell
-python scripts\analyze_real_03q_reverse.py
-```
+不要把它当成量产固件，也不要直接上星。
 
-The script will automatically:
+The patched firmware is for bench validation only:
 
-- look for the real firmware `bin`
-- look for the DigiManager binary
-- use the existing replay JSON files
-- produce a reverse-engineering map
+- use a dummy load
+- or disconnect the antenna
 
-## 输出在哪里 / Where The Output Goes
-输出会写到：
-
-- `logs/reverse/reverse-map.json`
-- `logs/reverse/reverse-map.md`
-
-These files are the current working outputs:
-
-- `logs/reverse/reverse-map.json`
-- `logs/reverse/reverse-map.md`
-
-## 我该先看哪份文档 / Which Document To Read First
-- 逆向快速上手 / reverse quick start:
-  [docs/REAL_03Q_REVERSE_QUICKSTART.md](/F:/Codex/CEC固件改装FT4/docs/REAL_03Q_REVERSE_QUICKSTART.md)
-- 动态改频验证 / dynamic retune check:
-  [docs/REAL_03Q_DYNAMIC_RETUNE.md](/F:/Codex/CEC固件改装FT4/docs/REAL_03Q_DYNAMIC_RETUNE.md)
-- 逆向结果模板 / reverse result template:
-  [docs/REAL_03Q_REVERSE_RESULT_TEMPLATE.md](/F:/Codex/CEC固件改装FT4/docs/REAL_03Q_REVERSE_RESULT_TEMPLATE.md)
-- 动态结果模板 / dynamic result template:
-  [docs/REAL_03Q_DYNAMIC_RETUNE_RESULT_TEMPLATE.md](/F:/Codex/CEC固件改装FT4/docs/REAL_03Q_DYNAMIC_RETUNE_RESULT_TEMPLATE.md)
-- 输入资产说明 / asset intake notes:
-  [reverse/README.md](/F:/Codex/CEC固件改装FT4/reverse/README.md)
-
-## 当前输出目标格式 / Current Output Targets
-这轮希望最终收敛成下面 5 个结论字段：
-
-- `digital_mode_entry`
-- `frequency_set_call_chain`
-- `lock_frequency_owner`
-- `external_retune_capability`
-- `recommended_next_step`
-
-动态验证阶段新增 3 个结论字段：
-
-- `digimanager_continuous_retune`
-- `firmware_applies_retune_in_digital_mode`
-- `lock_owner`
-
-This phase aims to reduce everything to these 5 fields:
-
-- `digital_mode_entry`
-- `frequency_set_call_chain`
-- `lock_frequency_owner`
-- `external_retune_capability`
-- `recommended_next_step`
-
-The dynamic validation step also adds:
-
-- `digimanager_continuous_retune`
-- `firmware_applies_retune_in_digital_mode`
-- `lock_owner`
+Do not treat it as a production firmware and do not use it on-air yet.

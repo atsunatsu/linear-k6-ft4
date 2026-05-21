@@ -1,37 +1,28 @@
-# Real 0.3q Dynamic Retune Result Template
+# Dynamic Retune Result Template
 
 ## 中文
-请至少记录：
+如果你还在做内部动态验证，请按这个格式记录：
 
-### 输入
+### 1. 抓包文件
 - `idle-retune.pcapng`：
 - `tx-retune.pcapng`：
-- `actions.json` 是否已填写：
+- `actions.json`：
 
-### 电台观察
-- 空闲态改频是否生效：`yes / no / temporary / unknown`
-- TX 态改频是否生效：`yes / no / temporary / unknown`
+### 2. 现场观察
+- 空闲态改频：`yes / no / temporary / unknown`
+- TX 态改频：`yes / no / temporary / unknown`
 - 备注：
 
-### 输出结论
+### 3. 分析结果
 - `digimanager_continuous_retune`：
 - `firmware_applies_retune_in_digital_mode`：
 - `lock_owner`：
 
 ## English
-Please record at least:
+For internal dynamic validation, record:
 
-### Inputs
-- `idle-retune.pcapng`:
-- `tx-retune.pcapng`:
-- whether `actions.json` was filled:
-
-### Radio observation
-- idle retune result: `yes / no / temporary / unknown`
-- TX retune result: `yes / no / temporary / unknown`
-- notes:
-
-### Output conclusions
-- `digimanager_continuous_retune`:
-- `firmware_applies_retune_in_digital_mode`:
-- `lock_owner`:
+- capture files
+- radio observations
+- `digimanager_continuous_retune`
+- `firmware_applies_retune_in_digital_mode`
+- `lock_owner`

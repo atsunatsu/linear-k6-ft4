@@ -1,43 +1,37 @@
 # Real 0.3q Reverse Result Template
 
 ## 中文
-请至少按下面格式记录这轮逆向结果：
+请按这个格式整理逆向阶段结论：
 
-### 输入材料
-- 固件 `bin` 文件名：
-- DigiManager 文件名：
-- 是否使用了现有 replay JSON：
+### 1. 输入材料
+- 固件文件：
+- DigiManager 文件：
 
-### 输出结论
+### 2. 数字模式入口
 - `digital_mode_entry`：
+- 关键锚点：
+
+### 3. 设频调用链
 - `frequency_set_call_chain`：
+- 关键锚点：
+
+### 4. 锁频责任点
 - `lock_frequency_owner`：
+- 当前判断依据：
+
+### 5. 上位机控频能力
 - `external_retune_capability`：
+- 当前判断依据：
+
+### 6. 下一步建议
 - `recommended_next_step`：
 
-### 额外观察
-- 有没有找到明显的数字模式字符串：
-- 有没有找到明显的设频相关线索：
-- DigiManager 看起来更像 UDP 还是串口主控：
-- 下一步更该做静态补点还是轻量动态验证：
-
 ## English
-Please record at least the following:
+Use this format for reverse-stage conclusions:
 
-### Input assets
-- firmware `bin` filename:
-- DigiManager filename:
-- whether the existing replay JSON files were used:
-
-### Output conclusions
-- `digital_mode_entry`:
-- `frequency_set_call_chain`:
-- `lock_frequency_owner`:
-- `external_retune_capability`:
-- `recommended_next_step`:
-
-### Extra notes
-- whether obvious digital-mode strings were found:
-- whether obvious frequency-setting clues were found:
-- whether DigiManager looks more like a UDP controller or a serial controller:
-- whether the next step should be deeper static work or light dynamic validation:
+1. input assets
+2. digital-mode entry
+3. frequency set call chain
+4. lock-frequency owner
+5. PC-side retune capability
+6. recommended next step

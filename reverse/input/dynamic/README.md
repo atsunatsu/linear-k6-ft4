@@ -1,45 +1,29 @@
-# Dynamic Validation Input
+# Dynamic Reverse Input
 
 ## 中文
-这里放“最小动态验证”需要的输入。
+这个目录专门放“最小动态验证”需要的输入。
 
-当前固定输入文件是：
+请把下面这些文件放在这里：
 
-- `actions.json`
 - `idle-retune.pcapng`
 - `tx-retune.pcapng`
+- `actions.json`
 
-`actions.json` 用来告诉脚本：
+如果你没有额外的改频软件，可以直接用：
 
-- 哪个文件是空闲态抓包
-- 哪个文件是 TX 态抓包
-- 在抓包里的哪几个时间点做了改频动作
-- 电台现场是否真的变频
+- [scripts/inject_retune_sequence.py](/F:/Codex/CEC固件改装FT4/scripts/inject_retune_sequence.py)
 
-分析命令：
-
-```powershell
-python scripts\analyze_dynamic_lock.py
-```
+它会把现有 replay 样本改造成“带改频事件的测试流量”。
 
 ## English
-This folder holds the inputs for the **minimal dynamic validation** step.
+This folder is for the minimal dynamic validation inputs:
 
-Required files:
-
-- `actions.json`
 - `idle-retune.pcapng`
 - `tx-retune.pcapng`
+- `actions.json`
 
-`actions.json` tells the script:
+If you do not have separate retune software, use:
 
-- which file is the idle-mode capture
-- which file is the TX capture
-- when the retune actions happened
-- whether the radio actually changed frequency on the bench
+- [scripts/inject_retune_sequence.py](/F:/Codex/CEC固件改装FT4/scripts/inject_retune_sequence.py)
 
-Analysis command:
-
-```powershell
-python scripts\analyze_dynamic_lock.py
-```
+It turns the existing replay samples into retune test traffic.

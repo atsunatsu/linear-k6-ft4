@@ -11,3 +11,4 @@ logs/
 /reverse/input/firmware/*.bin
 /reverse/input/digimanager/*.exe
 /reverse/input/digimanager/*.zip
+/outputs/

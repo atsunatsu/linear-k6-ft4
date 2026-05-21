@@ -1,8 +1,8 @@
 blank_issues_enabled: false
 contact_links:
-  - name: Current Reverse Guide / 当前逆向说明
-    url: https://github.com/atsunatsu/linear-k6-ft4/blob/main/README.md
-    about: Start here if you want to work on the real 0.3q reverse-engineering and dynamic retune validation flow.
-  - name: Dynamic Retune Guide / 动态改频验证说明
-    url: https://github.com/atsunatsu/linear-k6-ft4/blob/main/docs/REAL_03Q_DYNAMIC_RETUNE.md
-    about: Use this when you are collecting the idle/TX dynamic captures and radio observations.
+  - name: Patched Firmware Test Guide / patched 固件实机测试说明
+    url: https://github.com/atsunatsu/linear-k6-ft4/blob/main/docs/REAL_03Q_PATCHED_FIRMWARE_TEST.md
+    about: Start here if you are testing the patched real-0.3q bench firmware on a radio.
+  - name: Patch Workflow / 真实 0.3q 补丁工作流
+    url: https://github.com/atsunatsu/linear-k6-ft4/blob/main/docs/REAL_03Q_PATCH_WORKFLOW.md
+    about: Start here if you are maintaining the reverse patch workflow for the real 0.3q firmware.
