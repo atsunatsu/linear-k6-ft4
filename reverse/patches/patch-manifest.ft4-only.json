@@ -1,0 +1,43 @@
+{
+  "source_firmware_sha256": "38a80509c7f74e6c7170046baac5a15a5b908511af3f6a58fa658756ccf322d0",
+  "source_embedded_version": "*KD8CEC_FROM_SOU",
+  "output_embedded_version": "CEC_3QPF",
+  "notes": [
+    "Fill in enabled patch entries only after you have validated the real lock-frequency or FT4 gate offsets.",
+    "This template is generated from the real packed firmware and is intentionally narrow.",
+    "Variant generated for ft4-only.",
+    "If only the version-banner patch is enabled, this artifact is structural-only and not a functional retune/FT4 proof yet."
+  ],
+  "patches": [
+    {
+      "name": "digital_mode_retune_gate_candidate",
+      "enabled": false,
+      "kind": "replace_bytes",
+      "offset": null,
+      "expect_hex": "",
+      "replace_hex": "",
+      "anchor_hint": 57462,
+      "notes": "Use this after you identify the code path that forces digital-mode frequency back to a fixed value."
+    },
+    {
+      "name": "ft4_tx_gate_candidate",
+      "enabled": false,
+      "kind": "replace_bytes",
+      "offset": null,
+      "expect_hex": "",
+      "replace_hex": "",
+      "anchor_hint": 60532,
+      "notes": "Use this after you identify the branch that allows FT8 TX but blocks FT4 TX."
+    },
+    {
+      "name": "patched_version_banner",
+      "enabled": true,
+      "kind": "replace_ascii",
+      "offset": 56096,
+      "expect_ascii": " CEC_0.3Q",
+      "replace_ascii": " CEC_3QPF",
+      "notes": "Optional visual marker so testers can confirm they booted the patched bench firmware."
+    }
+  ],
+  "variant": "ft4-only"
+}

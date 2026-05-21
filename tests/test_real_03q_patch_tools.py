@@ -9,6 +9,7 @@ import unittest
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from sat_bridge.real_03q_patch_tools import (  # noqa: E402
+    build_variant_manifest,
     apply_patch_manifest,
     build_patch_workspace,
     repack_uvk5_packed_firmware,
@@ -79,6 +80,47 @@ class Real03qPatchToolsTests(unittest.TestCase):
         self.assertTrue(output_exists)
         self.assertEqual(unpacked["embedded_version"], "CEC_0.3QP1")
         self.assertIn(b" CEC_3QPB", unpacked["raw_bytes"])
+
+    def test_build_variant_manifest_enables_banner_and_sets_variant_version(self) -> None:
+        template = {
+            "source_firmware_sha256": "abc",
+            "source_embedded_version": "*KD8CEC_FROM_SOU",
+            "output_embedded_version": "CEC_0.3QP1",
+            "patches": [
+                {
+                    "name": "digital_mode_retune_gate_candidate",
+                    "enabled": False,
+                    "kind": "replace_bytes",
+                    "offset": None,
+                    "expect_hex": "",
+                    "replace_hex": "",
+                },
+                {
+                    "name": "ft4_tx_gate_candidate",
+                    "enabled": False,
+                    "kind": "replace_bytes",
+                    "offset": None,
+                    "expect_hex": "",
+                    "replace_hex": "",
+                },
+                {
+                    "name": "patched_version_banner",
+                    "enabled": False,
+                    "kind": "replace_ascii",
+                    "offset": 56096,
+                    "expect_ascii": " CEC_0.3Q",
+                    "replace_ascii": " CEC_3QPB",
+                },
+            ],
+        }
+
+        manifest = build_variant_manifest(template, "combined")
+
+        self.assertEqual(manifest["variant"], "combined")
+        self.assertEqual(manifest["output_embedded_version"], "CEC_3QPC")
+        banner_patch = next(item for item in manifest["patches"] if item["name"] == "patched_version_banner")
+        self.assertTrue(banner_patch["enabled"])
+        self.assertEqual(len(banner_patch["replace_ascii"]), len(banner_patch["expect_ascii"]))
 
 
 if __name__ == "__main__":  # pragma: no cover

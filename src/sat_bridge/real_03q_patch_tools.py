@@ -12,6 +12,23 @@ from sat_bridge.reverse_tools import PACK_OBFUSCATION, analyze_firmware_bin, try
 
 KNOWN_ANCHORS = ("DIG.M", "DIG+", "LOCK", "FREQ:%u.%05u", " CEC_0.3Q")
 WINDOW_RADIUS = 48
+VARIANT_SPECS = {
+    "retune-only": {
+        "output_embedded_version": "CEC_3QPR",
+        "enabled_patches": {"digital_mode_retune_gate_candidate", "patched_version_banner"},
+        "output_filename": "patched-0.3q-retune-only.packed.bin",
+    },
+    "ft4-only": {
+        "output_embedded_version": "CEC_3QPF",
+        "enabled_patches": {"ft4_tx_gate_candidate", "patched_version_banner"},
+        "output_filename": "patched-0.3q-ft4-only.packed.bin",
+    },
+    "combined": {
+        "output_embedded_version": "CEC_3QPC",
+        "enabled_patches": {"digital_mode_retune_gate_candidate", "ft4_tx_gate_candidate", "patched_version_banner"},
+        "output_filename": "patched-0.3q-combined.packed.bin",
+    },
+}
 
 
 @dataclass(slots=True)
@@ -201,6 +218,36 @@ def write_patch_workspace(workspace: PatchWorkspace, output_dir: Path, *, manife
     md_path.write_text(render_patch_workspace_markdown(payload), encoding="utf-8")
     manifest_target.write_text(json.dumps(workspace.manifest_template, indent=2, ensure_ascii=False), encoding="utf-8")
     return json_path, md_path, manifest_target
+
+
+def build_variant_manifest(template_manifest: dict[str, Any], variant_name: str) -> dict[str, Any]:
+    if variant_name not in VARIANT_SPECS:
+        raise ValueError(f"Unknown patch variant: {variant_name}")
+    spec = VARIANT_SPECS[variant_name]
+    manifest = json.loads(json.dumps(template_manifest))
+    manifest["variant"] = variant_name
+    manifest["output_embedded_version"] = spec["output_embedded_version"]
+    manifest["notes"] = list(manifest.get("notes", [])) + [
+        f"Variant generated for {variant_name}.",
+        "If only the version-banner patch is enabled, this artifact is structural-only and not a functional retune/FT4 proof yet.",
+    ]
+    for patch in manifest.get("patches", []):
+        patch["enabled"] = bool(patch.get("enabled")) and patch.get("name") in spec["enabled_patches"]
+        if patch.get("name") == "patched_version_banner":
+            patch["enabled"] = True
+            patch["replace_ascii"] = spec["output_embedded_version"].rjust(len(str(patch.get("expect_ascii", ""))))
+    return manifest
+
+
+def write_variant_manifests(template_manifest: dict[str, Any], output_dir: Path) -> dict[str, Path]:
+    output_dir.mkdir(parents=True, exist_ok=True)
+    result: dict[str, Path] = {}
+    for variant_name in VARIANT_SPECS:
+        manifest = build_variant_manifest(template_manifest, variant_name)
+        path = output_dir / f"patch-manifest.{variant_name}.json"
+        path.write_text(json.dumps(manifest, indent=2, ensure_ascii=False), encoding="utf-8")
+        result[variant_name] = path
+    return result
 
 
 def render_patch_workspace_markdown(payload: dict[str, Any]) -> str:

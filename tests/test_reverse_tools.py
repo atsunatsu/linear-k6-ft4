@@ -159,6 +159,7 @@ class ReverseToolsTests(unittest.TestCase):
         self.assertEqual(report["recommended_next_step"]["kind"], "static_anchor_review_then_targeted_dynamic")
         self.assertEqual(report["digital_mode_entry"]["status"], "candidate_firmware_strings_found")
         self.assertEqual(report["external_retune_capability"]["status"], "digimanager_looks_capable_of_external_retune")
+        self.assertIn("ft4_tx_gate", report)
         self.assertTrue(json_exists)
         self.assertTrue(md_exists)
         self.assertIn("lock_frequency_owner", md_text)

@@ -13,6 +13,13 @@ import zipfile
 
 from sat_bridge.dynamic_reverse_tools import analyze_dynamic_lock_behavior
 
+try:
+    import dnfile  # type: ignore
+    from dncil.cil.body.reader import read_method_body_from_bytes  # type: ignore
+except Exception:  # pragma: no cover - optional dependency on some machines
+    dnfile = None
+    read_method_body_from_bytes = None
+
 
 INTERESTING_KEYWORDS = [
     "DIG",
@@ -118,6 +125,7 @@ def analyze_reverse_targets(
     report["frequency_set_call_chain"] = _infer_frequency_set_call_chain(report)
     report["lock_frequency_owner"] = _infer_lock_frequency_owner(report)
     report["external_retune_capability"] = _infer_external_retune_capability(report)
+    report["ft4_tx_gate"] = _infer_ft4_tx_gate(report)
     report["recommended_next_step"] = _recommend_next_step(report)
     report["digimanager_continuous_retune"] = dynamic_summary.get("digimanager_continuous_retune", "unclear")
     report["firmware_applies_retune_in_digital_mode"] = dynamic_summary.get("firmware_applies_retune_in_digital_mode", "unclear")
@@ -209,6 +217,7 @@ def analyze_digimanager_binary(path: Path) -> dict[str, Any]:
             "has_serial_api": _imports_contain(imports, ["CreateFileA", "CreateFileW", "WriteFile", "ReadFile", "SetCommState"]) or has_serial_string_hint,
             "is_managed_dotnet": is_managed_dotnet,
         },
+        "managed_behavior": analyze_digimanager_managed_behavior(path if path.suffix.lower() == ".exe" else None, exe_data),
     }
 
 
@@ -326,6 +335,16 @@ def render_reverse_markdown(report: dict[str, Any]) -> str:
     lines.extend(
         [
             "",
+            "## ft4_tx_gate",
+            f"- status: {report['ft4_tx_gate']['status']}",
+            f"- summary: {report['ft4_tx_gate']['summary']}",
+            "- evidence:",
+        ]
+    )
+    lines.extend(f"  - {item}" for item in report["ft4_tx_gate"]["evidence"])
+    lines.extend(
+        [
+            "",
             "## dynamic_validation",
             f"- digimanager_continuous_retune: {report.get('digimanager_continuous_retune', 'unclear')}",
             f"- firmware_applies_retune_in_digital_mode: {report.get('firmware_applies_retune_in_digital_mode', 'unclear')}",
@@ -425,6 +444,98 @@ def try_unpack_uvk5_packed_firmware(data: bytes) -> dict[str, Any]:
         "embedded_version": embedded_version,
         "raw_bytes": raw_bytes,
     }
+
+
+def analyze_digimanager_managed_behavior(path: Path | None, exe_data: bytes) -> dict[str, Any]:
+    if dnfile is None or read_method_body_from_bytes is None:
+        return {"available": False, "reason": "dnfile_or_dncil_missing"}
+
+    try:
+        pe = dnfile.dnPE(name=str(path) if path else "memory.exe", data=exe_data)
+        method_texts: dict[str, list[dict[str, Any]]] = defaultdict(list)
+        for index, row in enumerate(pe.net.mdtables.MethodDef.rows, start=1):
+            if not row.Rva:
+                continue
+            try:
+                body = read_method_body_from_bytes(pe.get_data(row.Rva, 4096))
+            except Exception:
+                continue
+            rendered = "\n".join(
+                f"{ins.offset:04x} {ins.opcode} {ins.operand}"
+                for ins in body.instructions
+            )
+            method_texts[str(row.Name)].append(
+                {
+                    "token": f"0x{0x06000000 + index:08x}",
+                    "rva": row.Rva,
+                    "text": rendered,
+                }
+            )
+
+        protocol_8_forwarded = False
+        protocol_244_forwarded = False
+        protocol_4_forwarded = False
+        protocol_compare_values: list[int] = []
+
+        for item in method_texts.get("UDPDataCheck", []):
+            lines = item["text"].splitlines()
+            compare_blocks: list[tuple[int, int]] = []
+            for idx, line in enumerate(lines):
+                if "ldfld token(0x0400000C)" not in line:
+                    continue
+                compare_value = None
+                for probe in lines[idx + 1 : idx + 5]:
+                    if "ldc.i4.8" in probe:
+                        compare_value = 8
+                        break
+                    if "ldc.i4.s 123" in probe:
+                        compare_value = 123
+                        break
+                    if "ldc.i4.s 121" in probe:
+                        compare_value = 121
+                        break
+                    if "ldc.i4 244" in probe:
+                        compare_value = 244
+                        break
+                    if "ldc.i4.4" in probe:
+                        compare_value = 4
+                        break
+                if compare_value is not None:
+                    compare_blocks.append((idx, compare_value))
+                    protocol_compare_values.append(compare_value)
+
+            for block_index, (start_idx, compare_value) in enumerate(compare_blocks):
+                end_idx = compare_blocks[block_index + 1][0] if block_index + 1 < len(compare_blocks) else len(lines)
+                block_text = "\n".join(lines[start_idx:end_idx])
+                if compare_value == 8 and "call token(0x06000014)" in block_text:
+                    protocol_8_forwarded = True
+                if compare_value == 244 and "call token(0x06000012)" in block_text:
+                    protocol_244_forwarded = True
+                if compare_value == 4 and "call token(0x06000014)" in block_text:
+                    protocol_4_forwarded = True
+        protocol_4_seen_in_ui = any(
+            "ldfld token(0x0400000C)" in item["text"] and "ldc.i4.4" in item["text"]
+            for item in method_texts.get("tmrRecv_Tick", [])
+        )
+
+        return {
+            "available": True,
+            "udpdatacheck_methods": [
+                {"token": item["token"], "rva": item["rva"]}
+                for item in method_texts.get("UDPDataCheck", [])
+            ],
+            "tmrrecv_methods": [
+                {"token": item["token"], "rva": item["rva"]}
+                for item in method_texts.get("tmrRecv_Tick", [])
+            ],
+            "protocol_8_forwarded": protocol_8_forwarded,
+            "protocol_244_forwarded": protocol_244_forwarded,
+            "protocol_4_forwarded": protocol_4_forwarded,
+            "protocol_4_seen_in_ui": protocol_4_seen_in_ui,
+            "protocol_compare_values": protocol_compare_values,
+        }
+    except Exception as exc:
+        return {"available": False, "reason": f"managed_parse_failed:{exc.__class__.__name__}"}
 
 
 def parse_pe_imports(data: bytes) -> dict[str, list[str]]:
@@ -606,6 +717,12 @@ def _infer_external_retune_capability(report: dict[str, Any]) -> dict[str, Any]:
             evidence.append("digimanager imports: " + ", ".join(sorted(imports)))
         api_hints = digimanager.get("api_hints", {})
         evidence.append(f"has_udp_api={int(bool(api_hints.get('has_udp_api')))} has_serial_api={int(bool(api_hints.get('has_serial_api')))}")
+        managed_behavior = digimanager.get("managed_behavior", {})
+        if managed_behavior.get("available"):
+            evidence.append(
+                "managed IL: protocol_244_forwarded="
+                + ("yes" if managed_behavior.get("protocol_244_forwarded") else "no")
+            )
         for port, count in digimanager.get("port_mentions", {}).items():
             if count:
                 evidence.append(f"port mention {port}: {count}")
@@ -633,6 +750,38 @@ def _infer_external_retune_capability(report: dict[str, Any]) -> dict[str, Any]:
         "status": "missing_real_assets",
         "summary": "External retune capability cannot be judged until both real sides are available for analysis.",
         "evidence": evidence or ["Need both firmware and DigiManager binaries."],
+    }
+
+
+def _infer_ft4_tx_gate(report: dict[str, Any]) -> dict[str, Any]:
+    evidence: list[str] = []
+    digimanager = report.get("digimanager", {})
+    managed_behavior = digimanager.get("managed_behavior", {})
+    auxiliary = report.get("auxiliary_replays", {})
+
+    if auxiliary.get("present"):
+        for file_summary in auxiliary.get("files", []):
+            evidence.append(
+                f"replay {Path(file_summary['path']).name} prefixes={', '.join(sorted(file_summary['prefix_counts']))}"
+            )
+
+    if managed_behavior.get("available"):
+        evidence.append("managed IL: protocol_8_forwarded=" + ("yes" if managed_behavior.get("protocol_8_forwarded") else "no"))
+        evidence.append("managed IL: protocol_244_forwarded=" + ("yes" if managed_behavior.get("protocol_244_forwarded") else "no"))
+        evidence.append("managed IL: protocol_4_forwarded=" + ("yes" if managed_behavior.get("protocol_4_forwarded") else "no"))
+        evidence.append("managed IL: protocol_4_seen_in_ui=" + ("yes" if managed_behavior.get("protocol_4_seen_in_ui") else "no"))
+
+        if managed_behavior.get("protocol_8_forwarded") and not managed_behavior.get("protocol_4_forwarded"):
+            return {
+                "status": "pc_side_gate_likely",
+                "summary": "DigiManager appears to forward protocol 8 packets into the device path, while protocol 4 is only visible in UI/status handling. The first FT4 TX gate therefore looks PC-side before firmware even gets a chance to transmit.",
+                "evidence": evidence,
+            }
+
+    return {
+        "status": "still_unclear",
+        "summary": "FT4 TX gating is not proven yet. More targeted DigiManager or firmware tracing is still needed.",
+        "evidence": evidence or ["No managed IL evidence was available."],
     }
 
 
