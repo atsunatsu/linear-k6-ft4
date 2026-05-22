@@ -1,0 +1,34 @@
+{
+  "retune-only": {
+    "manifest": "F:\\Codex\\CEC固件改装FT4\\reverse\\patches\\patch-manifest.retune-only.json",
+    "output_firmware": "F:\\Codex\\CEC固件改装FT4\\outputs\\patched-0.3q-retune-only.packed.bin",
+    "sha256": "bf1886e854bf923683abc77cc0f5e3e5095270de06e14d410a5c4a5e2b98c7ef",
+    "size_bytes": 61082,
+    "structural_only": false
+  },
+  "combined": {
+    "manifest": "F:\\Codex\\CEC固件改装FT4\\reverse\\patches\\patch-manifest.combined.json",
+    "output_firmware": "F:\\Codex\\CEC固件改装FT4\\outputs\\patched-0.3q-combined.packed.bin",
+    "sha256": "f57534456caf11fb1cb02997394d4e9eba2b7d46d19f31eb9b29e91ac1fb78ba",
+    "size_bytes": 61082,
+    "structural_only": false
+  },
+  "bench": {
+    "output_firmware": "F:\\Codex\\CEC固件改装FT4\\outputs\\patched-0.3q-bench.packed.bin",
+    "sha256": "f57534456caf11fb1cb02997394d4e9eba2b7d46d19f31eb9b29e91ac1fb78ba",
+    "size_bytes": 61082,
+    "alias_of": "F:\\Codex\\CEC固件改装FT4\\outputs\\patched-0.3q-combined.packed.bin",
+    "structural_only": false
+  },
+  "digimanager-ft4-forward": {
+    "manifest": "F:\\Codex\\CEC固件改装FT4\\reverse\\patches\\patch-manifest.digimanager-ft4-forward.json",
+    "output_binary": "F:\\Codex\\CEC固件改装FT4\\outputs\\patched-UVK5DigManager.exe",
+    "sha256": "3d7ef74218cd25acb0c86d9dabbc323b73c65017daf1f3c05be59375509bd24a",
+    "source_sha256": "cc736c7ec947c25706f49fcf15691789a229e2b3a1d6ef8831e45148e2a9e029",
+    "applied_patch_names": [
+      "udpdatacheck_ft4_forward_gate",
+      "confirmation_helper_repurpose"
+    ],
+    "structural_only": false
+  }
+}

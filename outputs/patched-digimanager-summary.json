@@ -1,0 +1,27 @@
+{
+  "source_binary": "F:\\Codex\\CEC固件改装FT4\\UVK5DigManager.exe",
+  "manifest": "F:\\Codex\\CEC固件改装FT4\\reverse\\patches\\patch-manifest.digimanager-ft4-forward.json",
+  "output_binary": "F:\\Codex\\CEC固件改装FT4\\outputs\\patched-UVK5DigManager.exe",
+  "source_sha256": "cc736c7ec947c25706f49fcf15691789a229e2b3a1d6ef8831e45148e2a9e029",
+  "output_sha256": "3d7ef74218cd25acb0c86d9dabbc323b73c65017daf1f3c05be59375509bd24a",
+  "applied_patches": [
+    {
+      "name": "udpdatacheck_ft4_forward_gate",
+      "method_token": "0x06000007",
+      "method_rva": 8712,
+      "patch_site_il_offset": 52,
+      "expect_hex": "02 7b 0c 00 00 04 1e 33 6b",
+      "replace_hex": "02 14 28 19 00 00 06 2c 6b",
+      "notes": "Replace the protocol-8-only test with a call into the repurposed helper and branch to the original fallthrough when false."
+    },
+    {
+      "name": "confirmation_helper_repurpose",
+      "method_token": "0x06000019",
+      "method_rva": 12780,
+      "patch_site_il_offset": 1,
+      "expect_hex": "03 72 e3 00 00 70 1a 28 5f 00 00 0a 1c fe 01 2a",
+      "replace_hex": "02 7b 0c 00 00 04 25 1a 2e 03 1e fe 01 2a 26 2a",
+      "notes": "Repurpose the currently unreferenced Confirmation method so it returns true for protocol 4 or 8."
+    }
+  ]
+}
