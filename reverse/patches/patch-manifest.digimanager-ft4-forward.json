@@ -1,0 +1,35 @@
+{
+  "source_sha256": "cc736c7ec947c25706f49fcf15691789a229e2b3a1d6ef8831e45148e2a9e029",
+  "source_binary": "UVK5DigManager.exe",
+  "patch_kind": "ft4-forward-only",
+  "method_token": "0x06000007",
+  "method_rva": 8712,
+  "helper_token": "0x06000019",
+  "helper_rva": 12780,
+  "notes": [
+    "Patch UDPDataCheck so protocol 4 reuses the existing protocol 8 forward path.",
+    "Repurpose the currently unreferenced Confirmation method as a tiny bool helper that returns true for protocol 8 or protocol 4."
+  ],
+  "patches": [
+    {
+      "name": "udpdatacheck_ft4_forward_gate",
+      "enabled": true,
+      "kind": "rewrite_gate_with_helper_call",
+      "il_offset": 52,
+      "expect_hex": "02 7b 0c 00 00 04 1e 33 6b",
+      "replace_hex": "02 14 28 19 00 00 06 2c 6b",
+      "anchor_hint": "RecvProtocol == 8 compare in UDPDataCheck",
+      "notes": "Replace the protocol-8-only branch with a helper call that returns true for protocol 8 or protocol 4."
+    },
+    {
+      "name": "confirmation_helper_repurpose",
+      "enabled": true,
+      "kind": "rewrite_unused_tiny_method",
+      "il_offset": 1,
+      "expect_hex": "03 72 e3 00 00 70 1a 28 5f 00 00 0a 1c fe 01 2a",
+      "replace_hex": "02 7b 0c 00 00 04 25 1a 2e 03 1e fe 01 2a 26 2a",
+      "anchor_hint": "Unreferenced Confirmation method body",
+      "notes": "Turn Confirmation into a 16-byte helper: return (RecvProtocol == 4 || RecvProtocol == 8)."
+    }
+  ]
+}

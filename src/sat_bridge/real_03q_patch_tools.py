@@ -18,14 +18,9 @@ VARIANT_SPECS = {
         "enabled_patches": {"digital_mode_retune_gate_candidate", "patched_version_banner"},
         "output_filename": "patched-0.3q-retune-only.packed.bin",
     },
-    "ft4-only": {
-        "output_embedded_version": "CEC_3QPF",
-        "enabled_patches": {"ft4_tx_gate_candidate", "patched_version_banner"},
-        "output_filename": "patched-0.3q-ft4-only.packed.bin",
-    },
     "combined": {
         "output_embedded_version": "CEC_3QPC",
-        "enabled_patches": {"digital_mode_retune_gate_candidate", "ft4_tx_gate_candidate", "patched_version_banner"},
+        "enabled_patches": {"digital_mode_retune_gate_candidate", "patched_version_banner"},
         "output_filename": "patched-0.3q-combined.packed.bin",
     },
 }
@@ -128,23 +123,13 @@ def build_manifest_template(firmware_summary: dict[str, Any], anchors: list[dict
         "patches": [
             {
                 "name": "digital_mode_retune_gate_candidate",
-                "enabled": False,
+                "enabled": True,
                 "kind": "replace_bytes",
-                "offset": None,
-                "expect_hex": "",
-                "replace_hex": "",
+                "offset": 3496,
+                "expect_hex": "39 d1",
+                "replace_hex": "00 bf",
                 "anchor_hint": anchor_index.get("DIG.M", {}).get("offset"),
-                "notes": "Use this after you identify the code path that forces digital-mode frequency back to a fixed value.",
-            },
-            {
-                "name": "ft4_tx_gate_candidate",
-                "enabled": False,
-                "kind": "replace_bytes",
-                "offset": None,
-                "expect_hex": "",
-                "replace_hex": "",
-                "anchor_hint": anchor_index.get("DIG+", {}).get("offset"),
-                "notes": "Use this after you identify the branch that allows FT8 TX but blocks FT4 TX.",
+                "notes": "Candidate retune patch: bypass the mode-specific branch immediately after the command-0x32 handler so digital-mode external retune can continue into the existing frequency-update range logic.",
             },
             {
                 "name": "patched_version_banner",
@@ -229,7 +214,7 @@ def build_variant_manifest(template_manifest: dict[str, Any], variant_name: str)
     manifest["output_embedded_version"] = spec["output_embedded_version"]
     manifest["notes"] = list(manifest.get("notes", [])) + [
         f"Variant generated for {variant_name}.",
-        "If only the version-banner patch is enabled, this artifact is structural-only and not a functional retune/FT4 proof yet.",
+        "This firmware variant only carries the real-0.3q retune candidate plus the bench version banner.",
     ]
     for patch in manifest.get("patches", []):
         patch["enabled"] = bool(patch.get("enabled")) and patch.get("name") in spec["enabled_patches"]

@@ -44,6 +44,8 @@ class Real03qPatchToolsTests(unittest.TestCase):
         self.assertEqual(workspace.embedded_version, "*KD8CEC_FROM_SOU")
         self.assertTrue(any(anchor["text"] == "DIG.M" for anchor in workspace.anchors))
         self.assertEqual(workspace.manifest_template["patches"][0]["name"], "digital_mode_retune_gate_candidate")
+        self.assertEqual(workspace.manifest_template["patches"][0]["offset"], 3496)
+        self.assertEqual(workspace.manifest_template["patches"][0]["replace_hex"], "00 bf")
 
     def test_apply_patch_manifest_updates_ascii_banner_and_repackages(self) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
@@ -89,19 +91,11 @@ class Real03qPatchToolsTests(unittest.TestCase):
             "patches": [
                 {
                     "name": "digital_mode_retune_gate_candidate",
-                    "enabled": False,
+                    "enabled": True,
                     "kind": "replace_bytes",
-                    "offset": None,
-                    "expect_hex": "",
-                    "replace_hex": "",
-                },
-                {
-                    "name": "ft4_tx_gate_candidate",
-                    "enabled": False,
-                    "kind": "replace_bytes",
-                    "offset": None,
-                    "expect_hex": "",
-                    "replace_hex": "",
+                    "offset": 3496,
+                    "expect_hex": "39 d1",
+                    "replace_hex": "00 bf",
                 },
                 {
                     "name": "patched_version_banner",
@@ -121,6 +115,8 @@ class Real03qPatchToolsTests(unittest.TestCase):
         banner_patch = next(item for item in manifest["patches"] if item["name"] == "patched_version_banner")
         self.assertTrue(banner_patch["enabled"])
         self.assertEqual(len(banner_patch["replace_ascii"]), len(banner_patch["expect_ascii"]))
+        retune_patch = next(item for item in manifest["patches"] if item["name"] == "digital_mode_retune_gate_candidate")
+        self.assertTrue(retune_patch["enabled"])
 
 
 if __name__ == "__main__":  # pragma: no cover

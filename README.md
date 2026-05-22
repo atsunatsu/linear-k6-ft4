@@ -1,104 +1,87 @@
 # linear-k6-ft4
 
-## 当前公开路线 / Current Public Route
-当前仓库只保留这一条主线：
+## Tester Start Here / 测试者从这里开始
+This repository now tests only one route:
 
-- 真实 `0.3q` 固件二进制逆向
-- 基于真实 `0.3q` 的补丁工作流
-- patched 固件的实机台架测试
+- `patched-0.3q-bench.packed.bin`
+- `patched-UVK5DigManager.exe`
 
-不要再走这些旧路线：
+Current goal:
 
-- 旧 replay 测试
-- 公开源码树直接编译固件
-- 旧 bench 固件刷写流程
+- keep the real `0.3q` digital-mode menu and workflow
+- let FT4 enter the same digital transmit path that FT8 already uses
+- let digital mode accept external retune updates instead of snapping back to a fixed frequency
 
-The repository now only tracks this route:
+Please do **not** use these old routes:
 
-- reversing the real `0.3q` firmware binary
-- building patch manifests against the real binary
-- bench testing patched firmware on a real radio
+- old replay-only route
+- public-source build route
+- stock DigiManager + patched firmware half-route
+- patched DigiManager + stock firmware half-route
 
-Do not use the old replay route, the public-source build route, or the old bench firmware route anymore.
+## Safety First / 先看安全边界
+Only test with:
 
-## 现在仓库里有什么 / What Exists Right Now
-当前已经完成：
+- a dummy load, or
+- the antenna disconnected
 
-- 真实 `cec_0.3QB.packed.bin` 的解包、字符串锚点和补丁工作区生成
-- `UVK5DigManager.exe` 的静态分析
-- patch manifest 变体生成
-- 4 个**结构正确、可刷写的候选固件文件**
+Do not treat this as a production firmware.  
+Do not use it on-air yet.
 
-当前输出位置：
+## What A Tester Needs / 测试者需要什么
+You do **not** need to compile anything.
 
-- 逆向地图：
-  - [logs/reverse/reverse-map.json](/F:/Codex/CEC固件改装FT4/logs/reverse/reverse-map.json)
-  - [logs/reverse/reverse-map.md](/F:/Codex/CEC固件改装FT4/logs/reverse/reverse-map.md)
-- 补丁工作区：
-  - [logs/reverse/patch-workspace.json](/F:/Codex/CEC固件改装FT4/logs/reverse/patch-workspace.json)
-  - [logs/reverse/patch-workspace.md](/F:/Codex/CEC固件改装FT4/logs/reverse/patch-workspace.md)
-- manifest：
-  - [reverse/patches/patch-manifest.retune-only.json](/F:/Codex/CEC固件改装FT4/reverse/patches/patch-manifest.retune-only.json)
-  - [reverse/patches/patch-manifest.ft4-only.json](/F:/Codex/CEC固件改装FT4/reverse/patches/patch-manifest.ft4-only.json)
-  - [reverse/patches/patch-manifest.combined.json](/F:/Codex/CEC固件改装FT4/reverse/patches/patch-manifest.combined.json)
-- 固件候选件文件名：
+You only need these two files from the maintainer:
+
+- `patched-0.3q-bench.packed.bin`
+- `patched-UVK5DigManager.exe`
+
+Then follow:
+
+- [Patched Firmware Test Guide](/F:/Codex/CEC固件改装FT4/docs/REAL_03Q_PATCHED_FIRMWARE_TEST.md)
+- [Patched Firmware Result Template](/F:/Codex/CEC固件改装FT4/docs/REAL_03Q_PATCHED_FIRMWARE_RESULT_TEMPLATE.md)
+
+## What A Tester Actually Does / 测试者实际只做这些
+1. Flash `patched-0.3q-bench.packed.bin`
+2. Replace the original DigiManager EXE with `patched-UVK5DigManager.exe`
+3. Confirm normal boot, normal menu, and digital-mode entry
+4. Verify FT8 still works
+5. Test whether FT4 now starts transmitting
+6. Test whether retune now works in digital mode
+7. Report the result with the template
+
+## Maintainer Notes / 维护者说明
+Maintainers can rebuild the current patch candidates locally.
+
+Main maintainer entry:
+
+- [Real 0.3q Patch Workflow](/F:/Codex/CEC固件改装FT4/docs/REAL_03Q_PATCH_WORKFLOW.md)
+
+Current generated outputs are tracked in:
+
+- [outputs/patch-build-summary.json](/F:/Codex/CEC固件改装FT4/outputs/patch-build-summary.json)
+- [logs/reverse/reverse-map.json](/F:/Codex/CEC固件改装FT4/logs/reverse/reverse-map.json)
+- [logs/reverse/reverse-map.md](/F:/Codex/CEC固件改装FT4/logs/reverse/reverse-map.md)
+
+## Current Status / 当前状态
+What is already true:
+
+- the real `0.3q` firmware unpack/patch/repack workflow works
+- a patched DigiManager build pipeline works
+- the repo can now generate:
   - `patched-0.3q-retune-only.packed.bin`
-  - `patched-0.3q-ft4-only.packed.bin`
   - `patched-0.3q-combined.packed.bin`
   - `patched-0.3q-bench.packed.bin`
+  - `patched-UVK5DigManager.exe`
 
-说明：
+What is **not** yet proven:
 
-- 这些候选件默认不直接进 Git 仓库
-- 测试者应从维护者那里拿到指定的固件文件
-- 维护者本地可在 `outputs/patch-build-summary.json` 查看 SHA256 与文件映射
+- that the current candidate pair already fixes FT4 on a real radio
+- that retune is already fully unlocked in digital mode on a real radio
 
-## 重要状态说明 / Important Status
-这一步必须说清楚：
+So the current artifacts are:
 
-- 这些 `patched-0.3q-*.packed.bin` 文件现在已经**结构正确、可刷写**
-- 但它们当前仍然是**补丁候选件**
-- 其中已经确认的一条新结论是：
-  - DigiManager 的改频路径仍然存在
-  - `FT4` 的第一道门控很可能发生在 **PC 侧**，不是纯固件侧
+- structurally valid
+- traceable to the real source binaries
+- ready for controlled bench testing
 
-所以当前这些固件候选件的用途是：
-
-- 验证补丁链是否稳定
-- 验证刷写、开机、菜单、数字模式入口是否保持真实 `0.3q` 风格
-- 为下一步真正的功能性补丁做台架准备
-
-They are flashable candidate builds, but they are not yet a proven “FT4 fixed” firmware.
-
-## 如果你是测试者 / If You Are A Tester
-如果维护者已经明确让你刷某一个 patched 固件，请只看这两份文档：
-
-- [docs/REAL_03Q_PATCHED_FIRMWARE_TEST.md](/F:/Codex/CEC固件改装FT4/docs/REAL_03Q_PATCHED_FIRMWARE_TEST.md)
-- [docs/REAL_03Q_PATCHED_FIRMWARE_RESULT_TEMPLATE.md](/F:/Codex/CEC固件改装FT4/docs/REAL_03Q_PATCHED_FIRMWARE_RESULT_TEMPLATE.md)
-
-你的工作只有：
-
-1. 刷入维护者指定的 patched 固件
-2. 断开天线或接假负载
-3. 确认开机、菜单和数字模式入口是否正常
-4. 做 FT8 / FT4 / 改频最小测试
-5. 按模板回报
-
-## 如果你是维护者 / If You Are Maintaining The Patch
-维护者主入口：
-
-- [docs/REAL_03Q_PATCH_WORKFLOW.md](/F:/Codex/CEC固件改装FT4/docs/REAL_03Q_PATCH_WORKFLOW.md)
-- [docs/REAL_03Q_REVERSE_QUICKSTART.md](/F:/Codex/CEC固件改装FT4/docs/REAL_03Q_REVERSE_QUICKSTART.md)
-
-当前最重要的结论是：
-
-- `retune` 仍应继续追真实固件里的数字模式锁频点
-- `FT4 TX gate` 现在更像 DigiManager 侧的前置门控
-
-## 安全边界 / Safety Boundary
-所有 patched 固件测试都只允许：
-
-- 假负载
-- 或断开天线
-
-不要把这些固件当成量产固件，也不要直接上空口或上星。

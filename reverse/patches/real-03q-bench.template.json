@@ -9,23 +9,13 @@
   "patches": [
     {
       "name": "digital_mode_retune_gate_candidate",
-      "enabled": false,
+      "enabled": true,
       "kind": "replace_bytes",
-      "offset": null,
-      "expect_hex": "",
-      "replace_hex": "",
+      "offset": 3496,
+      "expect_hex": "39 d1",
+      "replace_hex": "00 bf",
       "anchor_hint": 57462,
-      "notes": "Use this after you identify the code path that forces digital-mode frequency back to a fixed value."
-    },
-    {
-      "name": "ft4_tx_gate_candidate",
-      "enabled": false,
-      "kind": "replace_bytes",
-      "offset": null,
-      "expect_hex": "",
-      "replace_hex": "",
-      "anchor_hint": 60532,
-      "notes": "Use this after you identify the branch that allows FT8 TX but blocks FT4 TX."
+      "notes": "Candidate retune patch: bypass the mode-specific branch immediately after the command-0x32 handler so digital-mode external retune can continue into the existing frequency-update range logic."
     },
     {
       "name": "patched_version_banner",

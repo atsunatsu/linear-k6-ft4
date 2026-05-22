@@ -1,145 +1,82 @@
 # Real 0.3q Patch Workflow
 
-## 中文
-这份文档是给维护者看的，不是给普通测试者看的。
+## Purpose / 目的
+This document is for maintainers.
 
-目标只有一个：
+The current success-first route is:
 
-- 从真实 `cec_0.3QB.packed.bin` 出发，做出一个 **patched 真实 0.3q bench 固件**
+- patch the real `cec_0.3QB.packed.bin` so digital-mode retune is no longer blocked
+- patch `UVK5DigManager.exe` so FT4 is forwarded like FT8
+- test only the combined pair on a real bench setup
 
-这个 patched 固件要用于台架验证两件事：
-
-1. 数字模式下外部改频是否终于能生效
-2. FT4 是否终于能沿现有数字发射链真正进入发射
-
-## 第一步：准备真实输入
-把下面两个文件放进工作区根目录，或者放到 `reverse/input` 对应目录：
+## Inputs / 输入
+Place these real files in the workspace root or the matching `reverse/input` folders:
 
 - `cec_0.3QB.packed.bin`
 - `UVK5DigManager.exe`
 
-## 第二步：先生成补丁工作区
-在项目目录打开 `PowerShell`，运行：
+## Build The Combined Candidates / 生成组合补丁候选件
+Open PowerShell in the project directory and run:
 
 ```powershell
-python scripts\build_real_03q_patch_workspace.py
+python scripts\build_real_03q_patch_variants.py
 ```
 
-这一步会生成：
+This currently generates:
 
-- `logs/reverse/patch-workspace.json`
-- `logs/reverse/patch-workspace.md`
-- `reverse/patches/real-03q-bench.template.json`
-
-重点看：
-
-- `DIG.M`
-- `DIG+`
-- `LOCK`
-- `FREQ:%u.%05u`
-
-以及它们周围的：
-
-- `window_hex`
-- `raw_offset_references`
-
-## 第三步：填写补丁清单
-打开：
-
-- `reverse/patches/real-03q-bench.template.json`
-
-这里已经预留了 3 类补丁位：
-
-1. `digital_mode_retune_gate_candidate`
-2. `ft4_tx_gate_candidate`
-3. `patched_version_banner`
-
-规则固定为：
-
-- 只有真正定位清楚的补丁才把 `enabled` 改成 `true`
-- `replace_bytes` 必须填写：
-  - `offset`
-  - `expect_hex`
-  - `replace_hex`
-- `replace_ascii` 只能做同长度替换
-
-## 第四步：生成 patched 固件
-当补丁清单填好后，在项目目录运行：
-
-```powershell
-python scripts\apply_real_03q_patch.py reverse\patches\real-03q-bench.template.json
-```
-
-输出文件会写到：
-
+- `outputs/patched-0.3q-retune-only.packed.bin`
+- `outputs/patched-0.3q-combined.packed.bin`
 - `outputs/patched-0.3q-bench.packed.bin`
+- `outputs/patched-UVK5DigManager.exe`
+- `outputs/patch-build-summary.json`
 
-这一步会做这些检查：
+## Current Patch Split / 当前补丁分工
+### Firmware side / 固件侧
+Current firmware patch goal:
 
-- 原始固件 SHA256 是否和 manifest 一致
-- 原始字节是否和 `expect_hex` 一致
-- 至少有一个补丁是启用状态
+- keep the real `0.3q` menu and digital-mode entry
+- allow digital-mode retune updates to survive instead of snapping back
 
-## 第五步：把 patched 固件交给测试者
-测试者不要自己编译，不要自己改 manifest。
+Current firmware variants:
 
-测试者只需要拿到：
+- `retune-only`
+- `combined`
 
-- `patched-0.3q-bench.packed.bin`
+### DigiManager side / 上位机侧
+Current DigiManager patch goal:
 
-然后按：
+- let `RecvProtocol == 4` reuse the same digital forward path already used by `RecvProtocol == 8`
 
-- [REAL_03Q_PATCHED_FIRMWARE_TEST.md](/F:/Codex/CEC固件改装FT4/docs/REAL_03Q_PATCHED_FIRMWARE_TEST.md)
+Current EXE patch uses:
 
-去刷机和测试。
+- `UDPDataCheck` gate rewrite
+- repurposed helper method for `protocol == 4 || protocol == 8`
 
-## 当前工作边界
-这条路线当前不承诺：
+## Important Files / 关键文件
+- Reverse report:
+  - [logs/reverse/reverse-map.json](/F:/Codex/CEC固件改装FT4/logs/reverse/reverse-map.json)
+  - [logs/reverse/reverse-map.md](/F:/Codex/CEC固件改装FT4/logs/reverse/reverse-map.md)
+- Firmware manifests:
+  - [reverse/patches/patch-manifest.retune-only.json](/F:/Codex/CEC固件改装FT4/reverse/patches/patch-manifest.retune-only.json)
+  - [reverse/patches/patch-manifest.combined.json](/F:/Codex/CEC固件改装FT4/reverse/patches/patch-manifest.combined.json)
+- DigiManager manifest:
+  - [reverse/patches/patch-manifest.digimanager-ft4-forward.json](/F:/Codex/CEC固件改装FT4/reverse/patches/patch-manifest.digimanager-ft4-forward.json)
 
-- 恢复完整源码
-- 自动化 patch 发现
-- 一步到位找到锁频点
-- 一步到位恢复 FT4 全功能
+## What Is Proven And What Is Not / 已确认与未确认
+Already proven:
 
-当前目标是：
+- the real firmware can be unpacked, patched, and repacked
+- the DigiManager EXE can be patched reproducibly
+- the combined candidate files can be generated reproducibly
 
-- 建立稳定的真实 `0.3q` 补丁链
-- 快速做出可反复台架验证的 patched bench 固件
+Not yet proven on a real radio:
 
-## English
-This document is for maintainers, not for general testers.
+- that FT4 now always starts transmitting
+- that digital-mode retune is fully unlocked
 
-The goal is simple:
+So the current outputs are:
 
-- start from the real `cec_0.3QB.packed.bin`
-- build a **patched real-0.3q bench firmware**
+- structurally valid patch candidates
+- traceable to the real source binaries
+- ready for controlled bench testing
 
-Use this patched firmware to validate:
-
-1. whether digital-mode retune is finally honored
-2. whether FT4 can finally enter the existing digital TX path
-
-### Steps
-1. Place the real firmware and DigiManager binary in the workspace.
-2. Run:
-
-```powershell
-python scripts\build_real_03q_patch_workspace.py
-```
-
-3. Review:
-
-- `logs/reverse/patch-workspace.json`
-- `logs/reverse/patch-workspace.md`
-- `reverse/patches/real-03q-bench.template.json`
-
-4. Fill in the patch manifest with real offsets and byte replacements.
-5. Run:
-
-```powershell
-python scripts\apply_real_03q_patch.py reverse\patches\real-03q-bench.template.json
-```
-
-6. The patched firmware will be written to:
-
-- `outputs/patched-0.3q-bench.packed.bin`
