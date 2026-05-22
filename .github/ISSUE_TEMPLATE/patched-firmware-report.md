@@ -6,45 +6,57 @@ labels: ["combined-patch-test"]
 assignees: []
 ---
 
-## Basic Info / 基本信息
+## 基本信息
 
-- firmware filename:
-- DigiManager filename:
-- radio model:
-- dummy load or disconnected antenna the whole time: `yes / no`
+- 组合补丁固件文件名:
+- patched DigiManager 文件名:
+- 原版固件文件名:
+- 原版 DigiManager 文件名:
+- 电台型号:
+- 是否全程假负载或断开天线: `yes / no`
 
-## Boot And Menu / 开机与菜单
+## 开机与菜单
 
-- boot version shown:
-- menu looks normal: `yes / no`
-- digital-mode entry still present: `yes / no`
+- 开机版本显示:
+- 菜单是否正常: `yes / no`
+- 数字模式入口是否仍存在: `yes / no`
 
-## DigiManager Launch / DigiManager 启动
+## 组合补丁主路径结果
 
-- patched DigiManager starts normally: `yes / no`
-- main window still looks normal: `yes / no`
+- patched DigiManager 能否启动: `yes / no`
+- FT8 是否仍能发射: `yes / no`
+- FT4 是否真正进入发射: `yes / no`
+- DigiManager 是否对 FT4 有反应: `yes / no`
+- 电台是否对 FT4 有 TX 迹象: `yes / no`
+- 空闲态改频是否生效: `yes / no / temporary`
+- TX 态改频是否生效: `yes / no / temporary`
 
-## FT8 Regression / FT8 回归
+## 如果 FT4 失败，请补充这两组对照
 
-- FT8 still transmits: `yes / no`
-- notes:
+### 对照组 A：patched 固件 + 原版 DigiManager
 
-## FT4 Transmit / FT4 发射
+- FT8 是否正常: `yes / no`
+- FT4 是否起发射: `yes / no`
+- 空闲态改频是否生效: `yes / no / temporary`
+- TX 态改频是否生效: `yes / no / temporary`
+- 备注:
 
-- FT4 now really transmits: `yes / no`
-- DigiManager reacts: `yes / no`
-- radio shows TX behavior: `yes / no`
+### 对照组 B：原版固件 + patched DigiManager
 
-## Digital-Mode Retune / 数字模式改频
+- FT8 是否正常: `yes / no`
+- FT4 是否起发射: `yes / no`
+- 空闲态改频是否生效: `yes / no / temporary`
+- TX 态改频是否生效: `yes / no / temporary`
+- 备注:
 
-- idle retune: `yes / no / temporary`
-- TX retune: `yes / no / temporary`
-- notes:
+## 一句话总结
 
-## Attachments / 附件
+-
 
-- [ ] boot screen photo
-- [ ] menu photo
-- [ ] DigiManager screenshot
-- [ ] bench photo
+## 附件
+
+- [ ] 开机界面截图
+- [ ] 菜单截图
+- [ ] DigiManager 截图
+- [ ] 台架照片
 
