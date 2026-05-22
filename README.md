@@ -1,87 +1,85 @@
 # linear-k6-ft4
 
-## Tester Start Here / 测试者从这里开始
-This repository now tests only one route:
+## 测试者先看这里
+这个仓库现在只测试一条路线：
 
 - `patched-0.3q-bench.packed.bin`
 - `patched-UVK5DigManager.exe`
 
-Current goal:
+当前目标是：
 
-- keep the real `0.3q` digital-mode menu and workflow
-- let FT4 enter the same digital transmit path that FT8 already uses
-- let digital mode accept external retune updates instead of snapping back to a fixed frequency
+- 保留真实 `0.3q` 的数字模式菜单和基本工作流
+- 让 FT4 像 FT8 一样进入现有数字发射链
+- 让数字模式能够接受外部改频，而不是立刻被拉回固定频率
 
-Please do **not** use these old routes:
+请不要再走这些旧路线：
 
-- old replay-only route
-- public-source build route
-- stock DigiManager + patched firmware half-route
-- patched DigiManager + stock firmware half-route
+- 旧的 replay 路线
+- 公开源码树直接编译固件路线
+- 原版 DigiManager + patched 固件的半路线
+- patched DigiManager + 原版固件的半路线
 
-## Safety First / 先看安全边界
-Only test with:
+## 安全边界
+现在所有测试都只允许：
 
-- a dummy load, or
-- the antenna disconnected
+- 接假负载，或
+- 断开天线
 
-Do not treat this as a production firmware.  
-Do not use it on-air yet.
+不要把它当成量产固件。  
+不要直接上空口发射。
 
-## What A Tester Needs / 测试者需要什么
-You do **not** need to compile anything.
+## 测试者需要什么
+测试者**不需要**自己编译任何东西。
 
-You only need these two files from the maintainer:
+测试者只需要从维护者那里拿到这两个文件：
 
 - `patched-0.3q-bench.packed.bin`
 - `patched-UVK5DigManager.exe`
 
-Then follow:
+然后按这两份文档操作：
 
-- [Patched Firmware Test Guide](/F:/Codex/CEC固件改装FT4/docs/REAL_03Q_PATCHED_FIRMWARE_TEST.md)
-- [Patched Firmware Result Template](/F:/Codex/CEC固件改装FT4/docs/REAL_03Q_PATCHED_FIRMWARE_RESULT_TEMPLATE.md)
+- [patched 固件实机测试说明](/F:/Codex/CEC固件改装FT4/docs/REAL_03Q_PATCHED_FIRMWARE_TEST.md)
+- [patched 固件测试结果模板](/F:/Codex/CEC固件改装FT4/docs/REAL_03Q_PATCHED_FIRMWARE_RESULT_TEMPLATE.md)
 
-## What A Tester Actually Does / 测试者实际只做这些
-1. Flash `patched-0.3q-bench.packed.bin`
-2. Replace the original DigiManager EXE with `patched-UVK5DigManager.exe`
-3. Confirm normal boot, normal menu, and digital-mode entry
-4. Verify FT8 still works
-5. Test whether FT4 now starts transmitting
-6. Test whether retune now works in digital mode
-7. Report the result with the template
+## 测试者实际只做这些事
+1. 刷入 `patched-0.3q-bench.packed.bin`
+2. 用 `patched-UVK5DigManager.exe` 替换原来的 DigiManager
+3. 确认能正常开机、菜单正常、数字模式入口还在
+4. 先做 FT8 回归，确认原有可用路径没坏
+5. 再测 FT4 是否开始真正发射
+6. 再测数字模式下改频是否生效
+7. 按模板回报结果
 
-## Maintainer Notes / 维护者说明
-Maintainers can rebuild the current patch candidates locally.
+## 维护者入口
+如果你是维护者，当前主入口是：
 
-Main maintainer entry:
+- [真实 0.3q 补丁工作流](/F:/Codex/CEC固件改装FT4/docs/REAL_03Q_PATCH_WORKFLOW.md)
 
-- [Real 0.3q Patch Workflow](/F:/Codex/CEC固件改装FT4/docs/REAL_03Q_PATCH_WORKFLOW.md)
-
-Current generated outputs are tracked in:
+当前关键输出文件位置：
 
 - [outputs/patch-build-summary.json](/F:/Codex/CEC固件改装FT4/outputs/patch-build-summary.json)
 - [logs/reverse/reverse-map.json](/F:/Codex/CEC固件改装FT4/logs/reverse/reverse-map.json)
 - [logs/reverse/reverse-map.md](/F:/Codex/CEC固件改装FT4/logs/reverse/reverse-map.md)
 
-## Current Status / 当前状态
-What is already true:
+## 当前状态
+现在已经可以确认的事情：
 
-- the real `0.3q` firmware unpack/patch/repack workflow works
-- a patched DigiManager build pipeline works
-- the repo can now generate:
+- 真实 `0.3q` 固件的解包、补丁、重新打包流程已经跑通
+- patched DigiManager 的生成流程已经跑通
+- 仓库现在可以稳定生成这些候选件：
   - `patched-0.3q-retune-only.packed.bin`
   - `patched-0.3q-combined.packed.bin`
   - `patched-0.3q-bench.packed.bin`
   - `patched-UVK5DigManager.exe`
 
-What is **not** yet proven:
+现在还**没有**实机证明的事情：
 
-- that the current candidate pair already fixes FT4 on a real radio
-- that retune is already fully unlocked in digital mode on a real radio
+- 当前这对候选件是否已经在真机上完全修好 FT4 发射
+- 当前这对候选件是否已经在数字模式下完全放开改频
 
-So the current artifacts are:
+所以现阶段这些产物的定位是：
 
-- structurally valid
-- traceable to the real source binaries
-- ready for controlled bench testing
+- 结构正确
+- 来源可追踪
+- 可以进入受控的台架测试
 
