@@ -170,6 +170,9 @@ OBJS += settings.o
 ifeq ($(ENABLE_AIRCOPY),1)
 	OBJS += ui/aircopy.o
 endif
+ifeq ($(ENABLE_FT4_CLEAN_TX),1)
+	OBJS += ui/ft8.o
+endif
 OBJS += ui/battery.o
 ifeq ($(ENABLE_FMRADIO),1)
 	OBJS += ui/fmradio.o
