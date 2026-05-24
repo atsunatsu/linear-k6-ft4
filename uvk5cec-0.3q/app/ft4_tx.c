@@ -139,16 +139,12 @@ FT4TX_Status_t FT4TX_Start(const uint8_t *payload, uint8_t payload_length, uint3
     gFt4TxState.symbol_start_tick_10ms = gFt4TxState.last_retune_tick_10ms;
     gFt4TxState.last_status = FT4TX_STATUS_OK;
 
-    FT4ENC_Init();
-    uint8_t payload77[10];
-    memset(payload77, 0, 10);
-    memcpy(payload77, payload, payload_length > 10 ? 10 : payload_length);
-    int symbols_generated = FT4ENC_EncodeMessage(
-        payload77,
-        gFt4TxState.ft4_symbols
-    );
+    /* WSJT-X already encoded the message into tones (0-3),
+       just copy them directly for GFSK transmission */
+    uint8_t symbol_count = payload_length > FT4_TOTAL_SYMBOLS ? FT4_TOTAL_SYMBOLS : payload_length;
+    memcpy(gFt4TxState.ft4_symbols, payload, symbol_count);
 
-    if (symbols_generated > 0) {
+    if (symbol_count > 0) {
         gFt4TxState.gfsk_mode = true;
         gFt4TxState.symbols_sent = 0;
         BK4819_WriteRegister(BK4819_REG_70, 0x00E0);
