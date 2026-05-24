@@ -146,9 +146,10 @@ endif
 OBJS += app/scanner.o
 ifeq ($(ENABLE_UART),1)
 	OBJS += app/uart.o
-	ifeq ($(ENABLE_FT4_CLEAN_TX),1)
-		OBJS += app/ft4_tx.o
-	endif
+endif
+ifeq ($(ENABLE_FT4_CLEAN_TX),1)
+	OBJS += app/ft4_encoder.o
+	OBJS += app/ft4_tx.o
 endif
 ifeq ($(ENABLE_AM_FIX), 1)
 	OBJS += am_fix.o

@@ -23,20 +23,24 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y gcc-arm-none-eabi libnewlib-arm-none-eabi
       
+      - name: Install Python dependencies
+        run: pip3 install crcmod
+      
       - name: Build firmware
         run: |
           cd uvk5cec-0.3q
-          make
+          make -j$(nproc)
       
       - name: Pack firmware
         run: |
           cd uvk5cec-0.3q
-          python3 fw-pack.py firmware.bin KD8CEC CEC_0.3Q ../outputs/patched-0.3q-ft4-gfsk.packed.bin
+          mkdir -p ../outputs
+          python3 fw-pack.py firmware.bin KD8CEC CEC_01C ../outputs/ft4-firmware-packed.bin
           ls -la ../outputs/
       
       - name: Upload firmware
         uses: actions/upload-artifact@v4
         with:
           name: ft4-firmware
-          path: outputs/*.packed.bin
+          path: outputs/*.bin
           retention-days: 30

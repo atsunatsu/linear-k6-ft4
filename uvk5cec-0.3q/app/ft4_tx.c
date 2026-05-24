@@ -83,12 +83,11 @@ static void FT4TX_SendGFSKSymbol(void)
         return;
     }
     uint8_t symbol = gFt4TxState.ft4_symbols[gFt4TxState.symbols_sent];
-    uint16_t freq = FT4ENC_CalculateFrequency(
-        symbol,
-        FT4_BASE_FREQ_HZ,
-        FT4_TONE_SPACING_HZ
-    );
-    uint16_t reg_value = FT4ENC_FreqToRegValue(freq);
+    /* 4-GFSK: symbol 0-3 maps to base + symbol * 20.833 Hz */
+    uint32_t freq_offset_hz = (uint32_t)symbol * 20833UL / 1000UL;
+    uint32_t freq_hz = FT4_BASE_FREQ_HZ + freq_offset_hz;
+    /* BK4819 REG_71 frequency register conversion */
+    uint16_t reg_value = (uint16_t)((freq_hz * 1353245UL + (1UL << 16)) >> 17);
     BK4819_WriteRegister(BK4819_REG_71, reg_value);
     gFt4TxState.symbols_sent++;
     gFt4TxState.next_send_tick_10ms = millis10() + (FT4_SYMBOL_DURATION_MS / 10);
@@ -141,9 +140,11 @@ FT4TX_Status_t FT4TX_Start(const uint8_t *payload, uint8_t payload_length, uint3
     gFt4TxState.last_status = FT4TX_STATUS_OK;
 
     FT4ENC_Init();
+    uint8_t payload77[10];
+    memset(payload77, 0, 10);
+    memcpy(payload77, payload, payload_length > 10 ? 10 : payload_length);
     int symbols_generated = FT4ENC_EncodeMessage(
-        (const char *)payload,
-        payload_length,
+        payload77,
         gFt4TxState.ft4_symbols
     );
 
