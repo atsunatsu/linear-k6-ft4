@@ -1,15 +1,19 @@
 from pathlib import Path
 import json
 from hashlib import sha256
+from shutil import copyfile
 import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from sat_bridge.digimanager_patch_tools import (  # noqa: E402
+    PATCHED_DIGIMANAGER_DIAGNOSTIC_FILENAME,
+    PATCHED_DIGIMANAGER_DIAGNOSTIC_PROFILE_FILENAME,
     PATCHED_DIGIMANAGER_FILENAME,
     apply_digimanager_patch_manifest,
     write_digimanager_patch_manifest,
 )
+from sat_bridge.ft4_timing_tools import write_mode_cadence_report  # noqa: E402
 from sat_bridge.real_03q_patch_tools import (  # noqa: E402
     VARIANT_SPECS,
     apply_patch_manifest,
@@ -70,6 +74,19 @@ def main() -> int:
     }
     digimanager_output = outputs_dir / PATCHED_DIGIMANAGER_FILENAME
     digimanager_report = apply_digimanager_patch_manifest(assets.digimanager, digimanager_manifest, digimanager_output)
+    diagnostic_digimanager_output = outputs_dir / PATCHED_DIGIMANAGER_DIAGNOSTIC_FILENAME
+    copyfile(digimanager_output, diagnostic_digimanager_output)
+    diagnostic_profile = outputs_dir / PATCHED_DIGIMANAGER_DIAGNOSTIC_PROFILE_FILENAME
+    ft4_sample = root / "samples" / "replay" / "ft4-replay.json"
+    ft8_sample = root / "samples" / "replay" / "ft8-replay.json"
+    timing_report = None
+    if ft4_sample.exists() and ft8_sample.exists():
+        timing_report = write_mode_cadence_report(
+            ft4_sample,
+            ft8_sample,
+            output_json=diagnostic_profile,
+            output_text=diagnostic_profile.with_suffix(".txt"),
+        )
     summary["digimanager-ft4-forward"] = {
         "manifest": str(digimanager_manifest),
         "output_binary": str(digimanager_output),
@@ -78,12 +95,20 @@ def main() -> int:
         "applied_patch_names": [str(item["name"]) for item in digimanager_report["applied_patches"]],
         "structural_only": False,
     }
+    summary["digimanager-diagnostic"] = {
+        "output_binary": str(diagnostic_digimanager_output),
+        "sha256": sha256(diagnostic_digimanager_output.read_bytes()).hexdigest(),
+        "alias_of": str(digimanager_output),
+        "diagnostic_profile": str(diagnostic_profile) if timing_report is not None else None,
+        "structural_only": False,
+    }
     (outputs_dir / "patch-build-summary.json").write_text(
         json.dumps(summary, indent=2, ensure_ascii=False),
         encoding="utf-8",
     )
     print(f"bench={bench_target}")
     print(f"digimanager={digimanager_output}")
+    print(f"digimanager_diagnostic={diagnostic_digimanager_output}")
     return 0
 
 

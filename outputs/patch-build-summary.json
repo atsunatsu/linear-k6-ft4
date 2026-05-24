@@ -30,5 +30,12 @@
       "confirmation_helper_repurpose"
     ],
     "structural_only": false
+  },
+  "digimanager-diagnostic": {
+    "output_binary": "F:\\Codex\\CEC固件改装FT4\\outputs\\patched-UVK5DigManager-diagnostic.exe",
+    "sha256": "3d7ef74218cd25acb0c86d9dabbc323b73c65017daf1f3c05be59375509bd24a",
+    "alias_of": "F:\\Codex\\CEC固件改装FT4\\outputs\\patched-UVK5DigManager.exe",
+    "diagnostic_profile": "F:\\Codex\\CEC固件改装FT4\\outputs\\patched-UVK5DigManager-diagnostic-profile.json",
+    "structural_only": false
   }
 }

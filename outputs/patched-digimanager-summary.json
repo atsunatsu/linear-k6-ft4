@@ -1,5 +1,5 @@
 {
-  "source_binary": "F:\\Codex\\CEC固件改装FT4\\UVK5DigManager.exe",
+  "source_binary": "F:\\Codex\\CEC固件改装FT4\\reverse\\input\\digimanager\\UVK5DigManager.exe",
   "manifest": "F:\\Codex\\CEC固件改装FT4\\reverse\\patches\\patch-manifest.digimanager-ft4-forward.json",
   "output_binary": "F:\\Codex\\CEC固件改装FT4\\outputs\\patched-UVK5DigManager.exe",
   "source_sha256": "cc736c7ec947c25706f49fcf15691789a229e2b3a1d6ef8831e45148e2a9e029",
@@ -23,5 +23,8 @@
       "replace_hex": "02 7b 0c 00 00 04 25 1a 2e 03 1e fe 01 2a 26 2a",
       "notes": "Repurpose the currently unreferenced Confirmation method so it returns true for protocol 4 or 8."
     }
-  ]
+  ],
+  "diagnostic_exe": "F:\\Codex\\CEC固件改装FT4\\outputs\\patched-UVK5DigManager-diagnostic.exe",
+  "diagnostic_profile": "F:\\Codex\\CEC固件改装FT4\\outputs\\patched-UVK5DigManager-diagnostic-profile.json",
+  "diagnostic_profile_available": true
 }

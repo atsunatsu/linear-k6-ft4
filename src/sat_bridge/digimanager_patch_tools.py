@@ -26,6 +26,8 @@ HELPER_EXPECT = bytes.fromhex("03 72 e3 00 00 70 1a 28 5f 00 00 0a 1c fe 01 2a")
 HELPER_REPLACE = bytes.fromhex("02 7b 0c 00 00 04 25 1a 2e 03 1e fe 01 2a 26 2a")
 
 PATCHED_DIGIMANAGER_FILENAME = "patched-UVK5DigManager.exe"
+PATCHED_DIGIMANAGER_DIAGNOSTIC_FILENAME = "patched-UVK5DigManager-diagnostic.exe"
+PATCHED_DIGIMANAGER_DIAGNOSTIC_PROFILE_FILENAME = "patched-UVK5DigManager-diagnostic-profile.json"
 
 
 @dataclass(slots=True)
