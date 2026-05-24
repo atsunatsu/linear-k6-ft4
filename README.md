@@ -87,6 +87,7 @@
 如果你是维护者，当前主要入口是：
 
 - [真实 0.3q 补丁工作流](/F:/Codex/CEC固件改装FT4/docs/REAL_03Q_PATCH_WORKFLOW.md)
+- [研发方法与过程](/F:/Codex/CEC固件改装FT4/docs/研发方法与过程.md)
 
 当前关键输出位置：
 
