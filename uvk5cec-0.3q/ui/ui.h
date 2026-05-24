@@ -32,6 +32,9 @@ enum GUI_DisplayType_t
 
 #ifdef ENABLE_AIRCOPY
 	DISPLAY_AIRCOPY,
+#ifdef ENABLE_FT4_CLEAN_TX
+	DISPLAY_FT8,
+#endif
 #endif
 
 	DISPLAY_N_ELEM,

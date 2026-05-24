@@ -361,6 +361,11 @@ int MENU_GetLimits(uint8_t menu_id, int32_t *pMin, int32_t *pMax)
 			*pMax = 2200;
 			break;
 
+#ifdef ENABLE_FT4_CLEAN_TX
+		case MENU_DATAMODE:
+			*pMax = 1;
+			break;
+#endif
 		case MENU_BATTYP:
 			//*pMin = 0;
 			*pMax = 1;
@@ -796,6 +801,11 @@ void MENU_AcceptSetting(void)
 			return;
 		}
 
+#ifdef ENABLE_FT4_CLEAN_TX
+		case MENU_DATAMODE:
+			gEeprom.DATA_MODE = gSubMenuSelection;
+			break;
+#endif
 		case MENU_BATTYP:
 			gEeprom.BATTERY_TYPE = gSubMenuSelection;
 			break;
@@ -1155,6 +1165,11 @@ void MENU_ShowCurrentSetting(void)
 			gSubMenuSelection = gBatteryCalibration[3];
 			break;
 
+#ifdef ENABLE_FT4_CLEAN_TX
+		case MENU_DATAMODE:
+			gSubMenuSelection = gEeprom.DATA_MODE;
+			break;
+#endif
 		case MENU_BATTYP:
 			gSubMenuSelection = gEeprom.BATTERY_TYPE;
 			break;

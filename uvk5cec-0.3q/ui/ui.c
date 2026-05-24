@@ -57,6 +57,9 @@ void (*UI_DisplayFunctions[])(void) = {
 #ifdef ENABLE_AIRCOPY
 	[DISPLAY_AIRCOPY] = &UI_DisplayAircopy,
 #endif
+#ifdef ENABLE_FT4_CLEAN_TX
+	[DISPLAY_FT8] = &UI_DisplayFT8,
+#endif
 };
 
 static_assert(ARRAY_SIZE(UI_DisplayFunctions) == DISPLAY_N_ELEM);

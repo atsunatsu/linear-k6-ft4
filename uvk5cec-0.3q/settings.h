@@ -246,6 +246,9 @@ typedef struct {
 	BLMIN_STAT_t		  BACKLIGHT_MIN_STAT;
 #endif
 	uint8_t               BACKLIGHT_MAX;
+#ifdef ENABLE_FT4_CLEAN_TX
+	uint8_t				  DATA_MODE;
+#endif
 	BATTERY_Type_t		  BATTERY_TYPE;
 #ifdef ENABLE_RSSI_BAR
 	uint8_t               S0_LEVEL;

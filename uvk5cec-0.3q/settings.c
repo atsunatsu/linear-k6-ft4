@@ -151,6 +151,9 @@ void SETTINGS_InitEEPROM(void)
 	gEeprom.ROGER                          = (Data[1] <  3) ? Data[1] : ROGER_MODE_OFF;
 	gEeprom.REPEATER_TAIL_TONE_ELIMINATION = (Data[2] < 11) ? Data[2] : 0;
 	gEeprom.TX_VFO                         = (Data[3] <  2) ? Data[3] : 0;
+#ifdef ENABLE_FT4_CLEAN_TX
+	gEeprom.DATA_MODE                      = (Data[3] & 1u);
+#endif
 	gEeprom.BATTERY_TYPE                   = (Data[4] < BATTERY_TYPE_UNKNOWN) ? Data[4] : BATTERY_TYPE_1600_MAH;
 
 	// 0ED0..0ED7
@@ -543,6 +546,9 @@ void SETTINGS_SaveSettings(void)
 	State[1] = gEeprom.ROGER;
 	State[2] = gEeprom.REPEATER_TAIL_TONE_ELIMINATION;
 	State[3] = gEeprom.TX_VFO;
+#ifdef ENABLE_FT4_CLEAN_TX
+	State[3] = (State[3] & ~1u) | (gEeprom.DATA_MODE & 1u);
+#endif
 	State[4] = gEeprom.BATTERY_TYPE;
 	EEPROM_WriteBuffer(0x0EA8, State);
 

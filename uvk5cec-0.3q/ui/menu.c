@@ -147,6 +147,9 @@ const t_menu_item MenuList[] =
 	{"FrCali", VOICE_ID_INVALID,                       MENU_F_CALI        }, // reference xtal calibration
 #endif
 	{"BatCal", VOICE_ID_INVALID,                       MENU_BATCAL        }, // battery voltage calibration
+#ifdef ENABLE_FT4_CLEAN_TX
+	{"DataMd", VOICE_ID_INVALID,                       MENU_DATAMODE     },
+#endif
 	{"BatTyp", VOICE_ID_INVALID,                       MENU_BATTYP        }, // battery type 1600/2200mAh
 	{"Reset",  VOICE_ID_INITIALISATION,                MENU_RESET         }, // might be better to move this to the hidden menu items ?
 
@@ -852,6 +855,11 @@ void UI_DisplayMenu(void)
 			break;
 		}
 
+#ifdef ENABLE_FT4_CLEAN_TX
+		case MENU_DATAMODE:
+			strcpy(String, gSubMenu_OFF_ON[gSubMenuSelection]);
+			break;
+#endif
 		case MENU_BATTYP:
 			strcpy(String, gSubMenu_BATTYP[gSubMenuSelection]);
 			break;

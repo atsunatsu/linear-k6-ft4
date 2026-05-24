@@ -552,7 +552,16 @@ static void MAIN_Key_MENU(const bool bKeyPressed, const bool bKeyHeld)
 				gWasFKeyPressed = false;
 				gUpdateStatus   = true;
 
-				ACTION_Handle(KEY_MENU, bKeyPressed, bKeyHeld);
+#ifdef ENABLE_FT4_CLEAN_TX
+				if (gEeprom.DATA_MODE) {
+					gScreenToDisplay = DISPLAY_FT8;
+					gRequestDisplayScreen = DISPLAY_FT8;
+					gUpdateDisplay = true;
+				} else
+#endif
+				{
+					ACTION_Handle(KEY_MENU, bKeyPressed, bKeyHeld);
+				}
 			}
 		}
 
