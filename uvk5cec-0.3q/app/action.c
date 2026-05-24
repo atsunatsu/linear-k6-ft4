@@ -18,6 +18,10 @@
 #include <string.h>
 
 #include "app/action.h"
+#ifdef ENABLE_FT4_CLEAN_TX
+#include "app/ft4_tx.h"
+#include "radio.h"
+#endif
 #include "app/app.h"
 #include "app/chFrScanner.h"
 #include "app/common.h"
@@ -54,6 +58,18 @@ inline static void ACTION_1750() { ACTION_AlarmOr1750(true); };
 #endif
 
 inline static void ACTION_ScanRestart() { ACTION_Scan(true); };
+
+
+#ifdef ENABLE_FT4_CLEAN_TX
+static void ACTION_FT4(void)
+{
+    uint8_t payload[10];
+    memset(payload, ' ', 10);
+    /* Use callsign from EEPROM as payload */
+    memcpy(payload, gEeprom.ANI_DTMF_ID, strlen(gEeprom.ANI_DTMF_ID) > 10 ? 10 : strlen(gEeprom.ANI_DTMF_ID));
+    FT4TX_Start(payload, 10, gCurrentVfo->pTX->Frequency);
+}
+#endif
 
 void (*action_opt_table[])(void) = {
 	[ACTION_OPT_NONE] = &FUNCTION_NOP,
