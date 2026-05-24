@@ -30,6 +30,9 @@
 #ifdef ENABLE_FMRADIO
 	#include "ui/fmradio.h"
 #endif
+#ifdef ENABLE_FT4_CLEAN_TX
+	#include "ui/ft8.h"
+#endif
 #include "ui/inputbox.h"
 #include "ui/main.h"
 #include "ui/menu.h"
