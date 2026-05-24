@@ -1,0 +1,42 @@
+name: Build FT4 Firmware
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'uvk5cec-0.3q/**'
+      - '.github/workflows/build-firmware.yml'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      
+      - name: Install ARM toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-arm-none-eabi libnewlib-arm-none-eabi
+      
+      - name: Build firmware
+        run: |
+          cd uvk5cec-0.3q
+          make
+      
+      - name: Pack firmware
+        run: |
+          cd uvk5cec-0.3q
+          python3 fw-pack.py firmware.bin KD8CEC CEC_0.3Q ../outputs/patched-0.3q-ft4-gfsk.packed.bin
+          ls -la ../outputs/
+      
+      - name: Upload firmware
+        uses: actions/upload-artifact@v4
+        with:
+          name: ft4-firmware
+          path: outputs/*.packed.bin
+          retention-days: 30
