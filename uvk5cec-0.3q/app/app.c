@@ -78,6 +78,20 @@
 static void ProcessKey(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld);
 
 
+
+#ifdef ENABLE_FT4_CLEAN_TX
+static void FT8_ProcessKeys(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld)
+{
+	if (!bKeyPressed)
+		return;
+	if (Key == KEY_EXIT) {
+		gScreenToDisplay = DISPLAY_MAIN;
+		gRequestDisplayScreen = DISPLAY_MAIN;
+		gUpdateDisplay = true;
+	}
+}
+#endif
+
 void (*ProcessKeysFunctions[])(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld) = {
 	[DISPLAY_MAIN] = &MAIN_ProcessKeys,
 	[DISPLAY_MENU] = &MENU_ProcessKeys,
@@ -89,6 +103,9 @@ void (*ProcessKeysFunctions[])(KEY_Code_t Key, bool bKeyPressed, bool bKeyHeld) 
 
 #ifdef ENABLE_AIRCOPY
 	[DISPLAY_AIRCOPY] = &AIRCOPY_ProcessKeys,
+#endif
+#ifdef ENABLE_FT4_CLEAN_TX
+	[DISPLAY_FT8] = &FT8_ProcessKeys,
 #endif
 };
 
