@@ -1,15 +1,18 @@
 {
   "source_sha256": "cc736c7ec947c25706f49fcf15691789a229e2b3a1d6ef8831e45148e2a9e029",
   "source_binary": "UVK5DigManager.exe",
-  "patch_kind": "ft4-forward-with-variable-length",
+  "patch_kind": "ft4-forward-with-variable-length-and-mode-hint",
   "method_token": "0x06000007",
   "method_rva": 8712,
   "helper_token": "0x06000019",
   "helper_rva": 12780,
+  "sender_token": "0x06000014",
+  "sender_rva": 10984,
   "notes": [
     "Patch UDPDataCheck so protocol 4 reuses the existing protocol 8 forward path.",
     "Repurpose the currently unreferenced Confirmation method as a tiny bool helper that returns true for protocol 8 or protocol 4.",
-    "Replace the hard-coded FT8 payload length of 79 symbols with the already-captured payload[4] value so FT4 can forward its longer symbol stream instead of being truncated."
+    "Replace the hard-coded FT8 payload length of 79 symbols with the already-captured payload[4] value so FT4 can forward its longer symbol stream instead of being truncated.",
+    "Patch SetDigitalData2 so the forwarded 5-byte header carries a second FT4/FT8 hint in byte[2] by mirroring the already-forwarded symbol count there. FT8 keeps its known-good 79-length path while FT4 no longer collapses into an all-zero mode field."
   ],
   "patches": [
     {
@@ -41,6 +44,16 @@
       "replace_hex": "04 00",
       "anchor_hint": "Hard-coded 79-symbol length passed into SetDigitalData2",
       "notes": "Reuse the existing payload[4] value (already stored into method arg2) so FT8 keeps 79 while FT4 can forward its larger symbol count."
+    },
+    {
+      "name": "setdigitaldata2_mode_hint_from_length",
+      "enabled": true,
+      "kind": "reuse_header_byte2_for_mode_hint",
+      "il_offset": 43,
+      "expect_hex": "06 18 16 9c 06 19 16 9c 06 1a 03 9c",
+      "replace_hex": "06 18 03 9c 06 19 16 9c 06 1a 03 9c",
+      "anchor_hint": "SetDigitalData2 writes zero into header byte[2]",
+      "notes": "Mirror arg1 into header byte[2] while leaving byte[3] zero and byte[4] unchanged. This gives downstream code a visible FT4/FT8 discriminator without changing method size or the existing command 0x35 framing."
     }
   ]
 }

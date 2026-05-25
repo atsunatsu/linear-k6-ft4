@@ -3,7 +3,7 @@
   "manifest": "F:\\Codex\\CEC固件改装FT4\\reverse\\patches\\patch-manifest.digimanager-ft4-forward.json",
   "output_binary": "F:\\Codex\\CEC固件改装FT4\\outputs\\patched-UVK5DigManager.exe",
   "source_sha256": "cc736c7ec947c25706f49fcf15691789a229e2b3a1d6ef8831e45148e2a9e029",
-  "output_sha256": "93bc390ea36ee5a7f9db69eca672d974197ee575bc04a0dbc91c46ec2408ff9a",
+  "output_sha256": "419e830c6791b4e0cde7089ab7a4e88e6910b0f1c344216b8da6565645119466",
   "applied_patches": [
     {
       "name": "udpdatacheck_ft4_forward_gate",
@@ -31,6 +31,15 @@
       "expect_hex": "1f 4f",
       "replace_hex": "04 00",
       "notes": "Replace the hard-coded 79-symbol length with ldarg.2/nop so the sender uses payload[4] as the forwarded symbol count."
+    },
+    {
+      "name": "setdigitaldata2_mode_hint_from_length",
+      "method_token": "0x06000014",
+      "method_rva": 10984,
+      "patch_site_il_offset": 43,
+      "expect_hex": "06 18 16 9c 06 19 16 9c 06 1a 03 9c",
+      "replace_hex": "06 18 03 9c 06 19 16 9c 06 1a 03 9c",
+      "notes": "Replace header byte[2]=0 with header byte[2]=arg1 so FT4 carries a downstream-visible mode hint while preserving byte[3]=0 and byte[4]=arg1."
     }
   ],
   "diagnostic_exe": "F:\\Codex\\CEC固件改装FT4\\outputs\\patched-UVK5DigManager-diagnostic.exe",

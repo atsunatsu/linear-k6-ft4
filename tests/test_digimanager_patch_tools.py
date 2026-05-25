@@ -9,10 +9,13 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 from sat_bridge.digimanager_patch_tools import (  # noqa: E402
     HELPER_EXPECT,
     HELPER_REPLACE,
+    SETDIGITALDATA2_MODE_PATCH_EXPECT,
+    SETDIGITALDATA2_MODE_PATCH_REPLACE,
     UDPDATACHECK_LENGTH_PATCH_EXPECT,
     UDPDATACHECK_LENGTH_PATCH_REPLACE,
     UDPDATACHECK_PATCH_SITE_EXPECT,
     UDPDATACHECK_PATCH_SITE_REPLACE,
+    _patch_setdigitaldata2_mode_hint,
     _write_method_code,
     _patch_confirmation_helper,
     _patch_udpdatacheck_ft4_forward_gate,
@@ -93,6 +96,33 @@ class DigiManagerPatchToolsTests(unittest.TestCase):
         )
         self.assertEqual(report["name"], "udpdatacheck_variable_symbol_length")
         self.assertEqual(report["replace_hex"], UDPDATACHECK_LENGTH_PATCH_REPLACE.hex(" "))
+
+    def test_setdigitaldata2_mode_patch_copies_arg1_into_header_byte2(self) -> None:
+        header = bytearray(b"\x13\x30\x01\x00") + (0x3C).to_bytes(4, "little") + b"\x04\x00\x00\x11"
+        code = bytearray(b"\x00" * 0x3C)
+        site_index = 0x002B - 0x000C
+        code[site_index : site_index + len(SETDIGITALDATA2_MODE_PATCH_EXPECT)] = SETDIGITALDATA2_MODE_PATCH_EXPECT
+        binary = bytearray(header + code + b"\x00" * 0x40)
+
+        class FakeMethod:
+            token = "0x06000014"
+            rva = 0x2AE8
+            file_offset = 0
+            header_size = 12
+            code_size = 0x3C
+            max_size_until_next_method = 0x80
+            body_header = bytes(header)
+            code_bytes = bytes(code)
+            tiny_header = False
+
+        report = _patch_setdigitaldata2_mode_hint(binary, FakeMethod())
+        patched_code = bytes(binary[12 : 12 + 0x3C])
+        self.assertEqual(
+            patched_code[site_index : site_index + len(SETDIGITALDATA2_MODE_PATCH_REPLACE)],
+            SETDIGITALDATA2_MODE_PATCH_REPLACE,
+        )
+        self.assertEqual(report["name"], "setdigitaldata2_mode_hint_from_length")
+        self.assertEqual(report["replace_hex"], SETDIGITALDATA2_MODE_PATCH_REPLACE.hex(" "))
 
     def test_write_method_code_updates_tiny_header_size(self) -> None:
         image = bytearray(bytes([0x42]) + b"\x00" * 16 + b"\x00" * 4)

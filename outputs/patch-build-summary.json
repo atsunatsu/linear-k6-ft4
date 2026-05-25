@@ -23,18 +23,19 @@
   "digimanager-ft4-forward": {
     "manifest": "F:\\Codex\\CEC固件改装FT4\\reverse\\patches\\patch-manifest.digimanager-ft4-forward.json",
     "output_binary": "F:\\Codex\\CEC固件改装FT4\\outputs\\patched-UVK5DigManager.exe",
-    "sha256": "93bc390ea36ee5a7f9db69eca672d974197ee575bc04a0dbc91c46ec2408ff9a",
+    "sha256": "419e830c6791b4e0cde7089ab7a4e88e6910b0f1c344216b8da6565645119466",
     "source_sha256": "cc736c7ec947c25706f49fcf15691789a229e2b3a1d6ef8831e45148e2a9e029",
     "applied_patch_names": [
       "udpdatacheck_ft4_forward_gate",
       "confirmation_helper_repurpose",
-      "udpdatacheck_variable_symbol_length"
+      "udpdatacheck_variable_symbol_length",
+      "setdigitaldata2_mode_hint_from_length"
     ],
     "structural_only": false
   },
   "digimanager-diagnostic": {
     "output_binary": "F:\\Codex\\CEC固件改装FT4\\outputs\\patched-UVK5DigManager-diagnostic.exe",
-    "sha256": "93bc390ea36ee5a7f9db69eca672d974197ee575bc04a0dbc91c46ec2408ff9a",
+    "sha256": "419e830c6791b4e0cde7089ab7a4e88e6910b0f1c344216b8da6565645119466",
     "alias_of": "F:\\Codex\\CEC固件改装FT4\\outputs\\patched-UVK5DigManager.exe",
     "diagnostic_profile": "F:\\Codex\\CEC固件改装FT4\\outputs\\patched-UVK5DigManager-diagnostic-profile.json",
     "structural_only": false
