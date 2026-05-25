@@ -51,6 +51,8 @@ def summarize_capture(capture: ReplayCapture) -> dict[str, Any]:
     ]
     nonzero_tail_examples = [_nonzero_tail(packet.payload) for packet in business_packets[:8]]
     marker_payloads = [_marker_summary(packet.payload) for packet in marker_packets]
+    business_nonzero_counts = [sum(1 for byte in packet.payload if byte) for packet in business_packets]
+    nonzero_positions = _top_nonzero_positions(business_packets)
 
     return {
         "source_capture": capture.source_capture,
@@ -64,6 +66,12 @@ def summarize_capture(capture: ReplayCapture) -> dict[str, Any]:
         "interval_max_ms": max(intervals) if intervals else None,
         "marker_payloads": marker_payloads,
         "business_nonzero_tail_examples": nonzero_tail_examples,
+        "business_nonzero_stats": {
+            "average_nonzero_bytes": (sum(business_nonzero_counts) / len(business_nonzero_counts)) if business_nonzero_counts else 0,
+            "min_nonzero_bytes": min(business_nonzero_counts) if business_nonzero_counts else 0,
+            "max_nonzero_bytes": max(business_nonzero_counts) if business_nonzero_counts else 0,
+            "top_nonzero_positions": nonzero_positions,
+        },
     }
 
 
@@ -102,6 +110,8 @@ def compare_upstream_and_forwarding(ft4_capture: ReplayCapture, ft8_capture: Rep
             ft8_stock_header=ft8_stock_header,
             ft4_patched_header=ft4_patched_header,
             ft8_patched_header=ft8_patched_header,
+            ft4_sparse_controls=summarize_capture(ft4_capture)["business_nonzero_stats"],
+            ft8_sparse_controls=summarize_capture(ft8_capture)["business_nonzero_stats"],
         ),
     }
 
@@ -150,6 +160,8 @@ def render_flow_report_markdown(report: dict[str, Any]) -> str:
         "## 抓包摘要",
         f"- FT4: {ft4['packet_count']} 包，marker {ft4['marker_count']} 个，中位间隔 {ft4['interval_median_ms']} ms",
         f"- FT8: {ft8['packet_count']} 包，marker {ft8['marker_count']} 个，中位间隔 {ft8['interval_median_ms']} ms",
+        f"- FT4 业务包平均非零字节: {ft4['business_nonzero_stats']['average_nonzero_bytes']:.2f}",
+        f"- FT8 业务包平均非零字节: {ft8['business_nonzero_stats']['average_nonzero_bytes']:.2f}",
         "",
         "## 上游模式包",
         f"- FT4 marker: {comparison['upstream']['ft4']}",
@@ -160,6 +172,10 @@ def render_flow_report_markdown(report: dict[str, Any]) -> str:
         f"- 原始路径 FT8: {comparison['stock_setdigitaldata2_headers']['ft8']}",
         f"- 现补丁路径 FT4: {comparison['patched_setdigitaldata2_headers']['ft4']}",
         f"- 现补丁路径 FT8: {comparison['patched_setdigitaldata2_headers']['ft8']}",
+        "",
+        "## 业务包形态",
+        f"- FT4 非零字节热点: {ft4['business_nonzero_stats']['top_nonzero_positions']}",
+        f"- FT8 非零字节热点: {ft8['business_nonzero_stats']['top_nonzero_positions']}",
         "",
         "## 判断",
         f"- {comparison['judgement']}",
@@ -178,6 +194,8 @@ def build_flow_judgement(
     ft8_stock_header: bytes | None,
     ft4_patched_header: bytes | None,
     ft8_patched_header: bytes | None,
+    ft4_sparse_controls: dict[str, Any],
+    ft8_sparse_controls: dict[str, Any],
 ) -> str:
     if not ft4_upstream or not ft8_upstream:
         return "缺少上游模式包，暂时无法判断。"
@@ -187,6 +205,7 @@ def build_flow_judgement(
         if ft4_patched_header and ft8_patched_header and ft4_patched_header != ft8_patched_header:
             return (
                 "WSJT-X 上游已经提供了真实 FT4/FT8 差异，但 DigiManager 原始 sender 头字段几乎把差异压平成同一路径。"
+                "而且 replay 业务包平均只有很少几个非零字节，更像稀疏控制帧而不是完整音调流。"
                 "当前补丁只是在同一 command 0x35 路径里保留更多模式提示，仍不能证明时序已经正确。"
             )
         return (
@@ -220,6 +239,15 @@ def _nonzero_tail(payload: bytes) -> dict[str, Any]:
         "first_nonzero_offsets": nonzero_offsets[:12],
         "tail_hex": tail.hex(" "),
     }
+
+
+def _top_nonzero_positions(packets: list[ReplayPacket]) -> list[list[int]]:
+    counts: dict[int, int] = {}
+    for packet in packets:
+        for index, byte in enumerate(packet.payload):
+            if byte:
+                counts[index] = counts.get(index, 0) + 1
+    return [[index, count] for index, count in sorted(counts.items(), key=lambda item: (-item[1], item[0]))[:16]]
 
 
 def _same_except_length(left: bytes | None, right: bytes | None) -> bool:
