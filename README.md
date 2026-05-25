@@ -89,6 +89,7 @@
 - [真实 0.3q 补丁工作流](/F:/Codex/CEC固件改装FT4/docs/REAL_03Q_PATCH_WORKFLOW.md)
 - [研发方法与过程](/F:/Codex/CEC固件改装FT4/docs/研发方法与过程.md)
 - [CEC 0.3q 的 FT8 发射方案与 FT4 可行性分析](/F:/Codex/CEC固件改装FT4/docs/CEC_FT8发射方案与FT4可行性分析.md)
+- [WSJT-X 到 DigiManager 的 FT4 数据流分析](/F:/Codex/CEC固件改装FT4/docs/WSJTX_DIGIMANAGER_FT4数据流分析.md)
 
 当前关键输出位置：
 
