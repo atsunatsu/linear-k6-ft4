@@ -9,11 +9,14 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 from sat_bridge.digimanager_patch_tools import (  # noqa: E402
     HELPER_EXPECT,
     HELPER_REPLACE,
+    UDPDATACHECK_LENGTH_PATCH_EXPECT,
+    UDPDATACHECK_LENGTH_PATCH_REPLACE,
     UDPDATACHECK_PATCH_SITE_EXPECT,
     UDPDATACHECK_PATCH_SITE_REPLACE,
     _write_method_code,
     _patch_confirmation_helper,
     _patch_udpdatacheck_ft4_forward_gate,
+    _patch_udpdatacheck_variable_symbol_length,
 )
 
 
@@ -63,6 +66,33 @@ class DigiManagerPatchToolsTests(unittest.TestCase):
         self.assertEqual(binary[0], 0x42)
         self.assertEqual(bytes(binary[1 : 1 + len(HELPER_REPLACE)]), HELPER_REPLACE)
         self.assertEqual(report["name"], "confirmation_helper_repurpose")
+
+    def test_udpdatacheck_length_patch_reuses_payload_length_slot(self) -> None:
+        header = bytearray(b"\x13\x30\x07\x00") + (0x1E7).to_bytes(4, "little") + b"\x04\x00\x00\x11"
+        code = bytearray(b"\x00" * 0x1E7)
+        site_index = 0x0090 - 0x000C
+        code[site_index : site_index + len(UDPDATACHECK_LENGTH_PATCH_EXPECT)] = UDPDATACHECK_LENGTH_PATCH_EXPECT
+        binary = bytearray(header + code + b"\x00" * 0x200)
+
+        class FakeMethod:
+            token = "0x06000007"
+            rva = 0x2208
+            file_offset = 0
+            header_size = 12
+            code_size = 0x1E7
+            max_size_until_next_method = 0x400
+            body_header = bytes(header)
+            code_bytes = bytes(code)
+            tiny_header = False
+
+        report = _patch_udpdatacheck_variable_symbol_length(binary, FakeMethod())
+        patched_code = bytes(binary[12 : 12 + 0x1E7])
+        self.assertEqual(
+            patched_code[site_index : site_index + len(UDPDATACHECK_LENGTH_PATCH_REPLACE)],
+            UDPDATACHECK_LENGTH_PATCH_REPLACE,
+        )
+        self.assertEqual(report["name"], "udpdatacheck_variable_symbol_length")
+        self.assertEqual(report["replace_hex"], UDPDATACHECK_LENGTH_PATCH_REPLACE.hex(" "))
 
     def test_write_method_code_updates_tiny_header_size(self) -> None:
         image = bytearray(bytes([0x42]) + b"\x00" * 16 + b"\x00" * 4)

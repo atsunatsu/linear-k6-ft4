@@ -19,6 +19,9 @@ UDPDATACHECK_PATCH_SITE_IL_OFFSET = 0x0034
 UDPDATACHECK_PATCH_SITE_EXPECT = bytes.fromhex("02 7b 0c 00 00 04 1e 33 6b")
 UDPDATACHECK_PATCH_SITE_REPLACE = bytes.fromhex("02 14 28 19 00 00 06 2c 6b")
 UDPDATACHECK_FALLTHROUGH_IL_OFFSET = 0x00A8
+UDPDATACHECK_LENGTH_PATCH_IL_OFFSET = 0x0090
+UDPDATACHECK_LENGTH_PATCH_EXPECT = bytes.fromhex("1f 4f")
+UDPDATACHECK_LENGTH_PATCH_REPLACE = bytes.fromhex("04 00")
 
 HELPER_TOKEN = "0x06000019"
 HELPER_RVA = 0x31EC
@@ -49,7 +52,7 @@ def build_digimanager_patch_manifest(binary_path: Path) -> dict[str, Any]:
     return {
         "source_sha256": sha256(binary_path.read_bytes()).hexdigest(),
         "source_binary": binary_path.name,
-        "patch_kind": "ft4-forward-only",
+        "patch_kind": "ft4-forward-with-variable-length",
         "method_token": method.token,
         "method_rva": method.rva,
         "helper_token": helper.token,
@@ -57,6 +60,7 @@ def build_digimanager_patch_manifest(binary_path: Path) -> dict[str, Any]:
         "notes": [
             "Patch UDPDataCheck so protocol 4 reuses the existing protocol 8 forward path.",
             "Repurpose the currently unreferenced Confirmation method as a tiny bool helper that returns true for protocol 8 or protocol 4.",
+            "Replace the hard-coded FT8 payload length of 79 symbols with the already-captured payload[4] value so FT4 can forward its longer symbol stream instead of being truncated.",
         ],
         "patches": [
             {
@@ -78,6 +82,16 @@ def build_digimanager_patch_manifest(binary_path: Path) -> dict[str, Any]:
                 "replace_hex": HELPER_REPLACE.hex(" "),
                 "anchor_hint": "Unreferenced Confirmation method body",
                 "notes": "Turn Confirmation into a 16-byte helper: return (RecvProtocol == 4 || RecvProtocol == 8).",
+            },
+            {
+                "name": "udpdatacheck_variable_symbol_length",
+                "enabled": True,
+                "kind": "reuse_payload_length_field",
+                "il_offset": UDPDATACHECK_LENGTH_PATCH_IL_OFFSET,
+                "expect_hex": UDPDATACHECK_LENGTH_PATCH_EXPECT.hex(" "),
+                "replace_hex": UDPDATACHECK_LENGTH_PATCH_REPLACE.hex(" "),
+                "anchor_hint": "Hard-coded 79-symbol length passed into SetDigitalData2",
+                "notes": "Reuse the existing payload[4] value (already stored into method arg2) so FT8 keeps 79 while FT4 can forward its larger symbol count.",
             },
         ],
     }
@@ -110,6 +124,7 @@ def apply_digimanager_patch_manifest(binary_path: Path, manifest_path: Path, out
     patch_reports = [
         _patch_udpdatacheck_ft4_forward_gate(image, method),
         _patch_confirmation_helper(image, helper),
+        _patch_udpdatacheck_variable_symbol_length(image, method),
     ]
 
     patched_bytes = bytes(image)
@@ -211,6 +226,30 @@ def _patch_confirmation_helper(image: bytearray, method: ManagedMethod) -> dict[
         "expect_hex": HELPER_EXPECT.hex(" "),
         "replace_hex": HELPER_REPLACE.hex(" "),
         "notes": "Repurpose the currently unreferenced Confirmation method so it returns true for protocol 4 or 8.",
+    }
+
+
+def _patch_udpdatacheck_variable_symbol_length(image: bytearray, method: ManagedMethod) -> dict[str, Any]:
+    code = bytearray(method.code_bytes)
+    code_start_il = method.header_size
+    site_index = UDPDATACHECK_LENGTH_PATCH_IL_OFFSET - code_start_il
+    actual = bytes(code[site_index : site_index + len(UDPDATACHECK_LENGTH_PATCH_EXPECT)])
+    if actual != UDPDATACHECK_LENGTH_PATCH_EXPECT:
+        raise ValueError(
+            "UDPDataCheck length patch site no longer matches expected bytes: "
+            f"expected={UDPDATACHECK_LENGTH_PATCH_EXPECT.hex(' ')} actual={actual.hex(' ')}"
+        )
+
+    code[site_index : site_index + len(UDPDATACHECK_LENGTH_PATCH_EXPECT)] = UDPDATACHECK_LENGTH_PATCH_REPLACE
+    _write_method_code(image, method, code)
+    return {
+        "name": "udpdatacheck_variable_symbol_length",
+        "method_token": method.token,
+        "method_rva": method.rva,
+        "patch_site_il_offset": UDPDATACHECK_LENGTH_PATCH_IL_OFFSET,
+        "expect_hex": UDPDATACHECK_LENGTH_PATCH_EXPECT.hex(" "),
+        "replace_hex": UDPDATACHECK_LENGTH_PATCH_REPLACE.hex(" "),
+        "notes": "Replace the hard-coded 79-symbol length with ldarg.2/nop so the sender uses payload[4] as the forwarded symbol count.",
     }
 
 
