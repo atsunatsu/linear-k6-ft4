@@ -6,6 +6,8 @@
 如果你想先了解这个项目为什么会走到当前这条路线，先看：
 - [研发方法与过程](/F:/Codex/CEC固件改装FT4/docs/研发方法与过程.md)
 - [CEC 0.3q 的 FT8 发射方案与 FT4 可行性分析](/F:/Codex/CEC固件改装FT4/docs/CEC_FT8发射方案与FT4可行性分析.md)
+- [WSJT-X 到 DigiManager 的 FT4 数据流分析](/F:/Codex/CEC固件改装FT4/docs/WSJTX_DIGIMANAGER_FT4数据流分析.md)
+- [真实 0.3q 中 command 0x35 处理路径分析](/F:/Codex/CEC固件改装FT4/docs/真实0.3q中command35处理路径分析.md)
 
 ## 当前主线
 当前成功率优先的路线是：
