@@ -54,6 +54,8 @@ DESCRIPTOR_INTERESTING_STRINGS = {
 }
 KNOWN_DISPATCH_SEEDS = [3496]
 KNOWN_PUBLIC_OBCFUSCATION = bytes.fromhex("166c14e62e910d402135d5401303e980")
+GENERIC_PARSE_DISPATCH_BASE = 0x028E
+GENERIC_PARSE_HELPER_TARGET = 0x0280
 
 
 @dataclass(slots=True)
@@ -132,6 +134,7 @@ def analyze_command35_path(
     candidate_windows = _build_candidate_windows(raw_firmware, compare_hits, seeded_compare_hits)
     string_windows = _build_string_windows(raw_firmware)
     dispatcher_hypothesis = infer_dispatcher_hypothesis()
+    generic_parse_profiles = decode_generic_parse_profiles(raw_firmware)
 
     report = {
         "inputs": {
@@ -153,6 +156,7 @@ def analyze_command35_path(
             "string_pointer_tables": pointer_tables,
             "literal_pool_refs": literal_pool_refs,
             "dispatcher_hypothesis": dispatcher_hypothesis,
+            "generic_parse_profiles": generic_parse_profiles,
             "candidate_dispatch_windows": [
                 {
                     "label": item.label,
@@ -189,7 +193,7 @@ def infer_dispatcher_hypothesis() -> dict[str, Any]:
         "dispatcher_root_offset": 0x0D90,
         "generic_parse_entry_offset": 0x0DBE,
         "generic_parse_helper_call_offset": 0x0DC4,
-        "generic_parse_helper_target": 0x0280,
+        "generic_parse_helper_target": GENERIC_PARSE_HELPER_TARGET,
         "direct_command_cases": {
             "0x32": {
                 "compare_offset": 0x0D90,
@@ -219,6 +223,64 @@ def infer_dispatcher_hypothesis() -> dict[str, Any]:
             "sp+0x10 length_or_count_b",
         ],
     }
+
+
+def decode_generic_parse_profiles(raw_firmware: bytes) -> dict[str, Any]:
+    command_cases: dict[str, Any] = {}
+    for command in [0x04, 0x08, 0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x47]:
+        entry = raw_firmware[GENERIC_PARSE_DISPATCH_BASE + command]
+        target = GENERIC_PARSE_DISPATCH_BASE + entry * 2
+        profile = {
+            "jump_table_entry": entry,
+            "target_offset": target,
+            "derived_outputs": infer_generic_case_outputs(target),
+        }
+        command_cases[f"0x{command:02X}"] = profile
+    return {
+        "dispatch_base": GENERIC_PARSE_DISPATCH_BASE,
+        "helper_target": GENERIC_PARSE_HELPER_TARGET,
+        "command_cases": command_cases,
+    }
+
+
+def infer_generic_case_outputs(target_offset: int) -> dict[str, Any]:
+    # This decoder is intentionally narrow: it only documents the currently
+    # observed immediate-output stubs that feed the second-stage parser.
+    if target_offset == 0x02E6:
+        return {"out_a": 0, "out_b": 0x32, "meaning_hint": "single immediate output path"}
+    if target_offset == 0x02EA:
+        return {"out_a": 0, "out_b": 0x03, "meaning_hint": "generic small-class selector"}
+    if target_offset == 0x02EE:
+        return {"out_a": 0x1E, "out_b": 0x78, "meaning_hint": "paired length/value profile"}
+    if target_offset == 0x02F6:
+        return {"out_a": 0x05, "out_b": 0x64, "meaning_hint": "paired length/value profile"}
+    if target_offset == 0x0302:
+        return {"out_a": 0, "out_b": 0x17, "meaning_hint": "single immediate output path"}
+    if target_offset == 0x0306:
+        return {"out_a": 0, "out_b": 0x07, "meaning_hint": "single immediate output path"}
+    if target_offset == 0x030A:
+        return {"out_a": 0x01, "out_b": 0x0A, "meaning_hint": "tiny paired profile"}
+    if target_offset == 0x0312:
+        return {"out_a": 0, "out_b": 0xD0, "meaning_hint": "single immediate output path"}
+    if target_offset == 0x0316:
+        return {"out_a": 0, "out_b": 0x01, "meaning_hint": "single immediate output path"}
+    if target_offset == 0x031A:
+        return {"out_a": 0, "out_b": 0x05, "meaning_hint": "single immediate output path"}
+    if target_offset == 0x031E:
+        return {"out_a": -1, "out_b": 0xA9, "meaning_hint": "special direct command family"}
+    if target_offset == 0x0328:
+        return {"out_a": 0, "out_b": 0x04, "meaning_hint": "single immediate output path"}
+    if target_offset == 0x032C:
+        return {"out_a": 0, "out_b": 0x02, "meaning_hint": "single immediate output path"}
+    if target_offset == 0x0330:
+        return {"out_a": -0x32, "out_b": 0x32, "meaning_hint": "signed profile"}
+    if target_offset == 0x0336:
+        return {"out_a": 0x640, "out_b": "literal_loaded", "meaning_hint": "large paired profile"}
+    if target_offset == 0x0340:
+        return {"out_a": 0, "out_b": 0x09, "meaning_hint": "single immediate output path"}
+    if target_offset == 0x0344:
+        return {"return": -1, "meaning_hint": "out-of-range / invalid command"}
+    return {"meaning_hint": "unknown_case_stub"}
 
 
 def write_command35_report(report: dict[str, Any], output_dir: Path) -> tuple[Path, Path]:
@@ -634,6 +696,7 @@ def render_command35_markdown(report: dict[str, Any]) -> str:
     pointer_tables = report["firmware"].get("string_pointer_tables", [])
     literal_pool_refs = report["firmware"].get("literal_pool_refs", [])
     dispatcher_hypothesis = report["firmware"].get("dispatcher_hypothesis", {})
+    generic_parse_profiles = report["firmware"].get("generic_parse_profiles", {})
     layout = report["digimanager"]["command35_layout"]
     lines = [
         "# 真实 0.3q 中 `command 0x35` 处理路径分析",
@@ -708,6 +771,16 @@ def render_command35_markdown(report: dict[str, Any]) -> str:
         lines.extend(f"  - `{item}`" for item in dispatcher_hypothesis["command_0x35_flow"])
         lines.append("- 通用 helper 输出位点：")
         lines.extend(f"  - `{item}`" for item in dispatcher_hypothesis["generic_parse_outputs"])
+    lines.append("")
+    lines.append("## 通用 helper 跳表结果")
+    if generic_parse_profiles:
+        lines.append(
+            f"- 跳表基址：`{generic_parse_profiles['dispatch_base']:#06x}`，helper：`{generic_parse_profiles['helper_target']:#06x}`"
+        )
+        for command, profile in generic_parse_profiles.get("command_cases", {}).items():
+            lines.append(
+                f"- `{command}` -> target `{profile['target_offset']:#06x}` -> `{profile['derived_outputs']}`"
+            )
     lines.append("")
     lines.append("## 字符串指针表候选")
     for item in pointer_tables[:8]:

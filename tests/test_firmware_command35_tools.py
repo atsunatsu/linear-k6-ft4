@@ -143,6 +143,11 @@ class FirmwareCommand35ToolsTests(unittest.TestCase):
         self.assertEqual(hypothesis["generic_parse_entry_offset"], 0x0DBE)
         self.assertEqual(hypothesis["generic_parse_helper_target"], 0x0280)
         self.assertTrue(any("0x0DBE" in item for item in hypothesis["command_0x35_flow"]))
+        profiles = report["firmware"]["generic_parse_profiles"]["command_cases"]
+        self.assertEqual(profiles["0x35"]["target_offset"], 0x02EA)
+        self.assertEqual(profiles["0x35"]["derived_outputs"]["out_b"], 0x03)
+        self.assertEqual(profiles["0x32"]["target_offset"], 0x031E)
+        self.assertEqual(profiles["0x32"]["derived_outputs"]["out_b"], 0xA9)
 
 
 if __name__ == "__main__":  # pragma: no cover
