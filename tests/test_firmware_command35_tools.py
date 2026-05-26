@@ -131,6 +131,19 @@ class FirmwareCommand35ToolsTests(unittest.TestCase):
         self.assertIn("dispatcher_near_0x32", dispatch_windows)
         self.assertTrue(any("cmp r0, #0x32" in line for line in dispatch_windows["dispatcher_near_0x32"]))
 
+    def test_real_assets_expose_generic_command35_branch_hypothesis(self) -> None:
+        report = analyze_command35_path(
+            firmware_path=Path("reverse/input/firmware/cec_0.3QB.packed.bin"),
+            digimanager_path=Path("reverse/input/digimanager/UVK5DigManager.exe"),
+            ft4_replay_path=Path("samples/replay/ft4-replay.json"),
+            ft8_replay_path=Path("samples/replay/ft8-replay.json"),
+        )
+        hypothesis = report["firmware"]["dispatcher_hypothesis"]
+        self.assertEqual(hypothesis["dispatcher_root_offset"], 0x0D90)
+        self.assertEqual(hypothesis["generic_parse_entry_offset"], 0x0DBE)
+        self.assertEqual(hypothesis["generic_parse_helper_target"], 0x0280)
+        self.assertTrue(any("0x0DBE" in item for item in hypothesis["command_0x35_flow"]))
+
 
 if __name__ == "__main__":  # pragma: no cover
     unittest.main()

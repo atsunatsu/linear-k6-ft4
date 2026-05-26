@@ -131,6 +131,7 @@ def analyze_command35_path(
     literal_pool_refs = find_literal_pool_refs_to_values(raw_firmware, literal_targets)
     candidate_windows = _build_candidate_windows(raw_firmware, compare_hits, seeded_compare_hits)
     string_windows = _build_string_windows(raw_firmware)
+    dispatcher_hypothesis = infer_dispatcher_hypothesis()
 
     report = {
         "inputs": {
@@ -151,6 +152,7 @@ def analyze_command35_path(
             "constant_cluster": constant_cluster,
             "string_pointer_tables": pointer_tables,
             "literal_pool_refs": literal_pool_refs,
+            "dispatcher_hypothesis": dispatcher_hypothesis,
             "candidate_dispatch_windows": [
                 {
                     "label": item.label,
@@ -180,6 +182,43 @@ def analyze_command35_path(
     }
     report["judgement"] = infer_command35_judgement(report)
     return report
+
+
+def infer_dispatcher_hypothesis() -> dict[str, Any]:
+    return {
+        "dispatcher_root_offset": 0x0D90,
+        "generic_parse_entry_offset": 0x0DBE,
+        "generic_parse_helper_call_offset": 0x0DC4,
+        "generic_parse_helper_target": 0x0280,
+        "direct_command_cases": {
+            "0x32": {
+                "compare_offset": 0x0D90,
+                "branch_offset": 0x0D92,
+                "target_offset": 0x0E1A,
+            },
+            "0x33": {
+                "compare_offset": 0x0DFC,
+                "branch_offset": 0x0DFE,
+                "target_offset": 0x0E00,
+            },
+        },
+        "command_0x35_flow": [
+            "0x0D90: cmp r0, #0x32",
+            "0x0D94: bgt 0x0DF8 when command > 0x32",
+            "0x0DFC: cmp r0, #0x33",
+            "0x0DFE: bne 0x0DBE when command != 0x33",
+            "0x0DBE: generic parse branch",
+            "0x0DC4: call helper 0x0280",
+        ],
+        "command_0x35_interpretation": (
+            "0x35 currently looks more like a generic parser family member than a "
+            "direct top-level compare case."
+        ),
+        "generic_parse_outputs": [
+            "sp+0x0c length_or_count_a",
+            "sp+0x10 length_or_count_b",
+        ],
+    }
 
 
 def write_command35_report(report: dict[str, Any], output_dir: Path) -> tuple[Path, Path]:
@@ -547,6 +586,11 @@ def infer_command35_judgement(report: dict[str, Any]) -> dict[str, Any]:
     else:
         summary_lines.append("当前还没有足够可靠的固件分发锚点，需要继续补充固件侧命令入口证据。")
 
+    summary_lines.append(
+        "????????????0x35 ???????? cmp????? 0x32/0x33 ???????? "
+        "0x0DBE ????????? 0x0280 ?? helper ??????????"
+    )
+
     return {
         "command35_frame_kind": "sparse_control_frame",
         "firmware_direct_cmp_0x35": "yes" if has_direct_35 else "no",
@@ -589,6 +633,7 @@ def render_command35_markdown(report: dict[str, Any]) -> str:
     constant_cluster = report["firmware"].get("constant_cluster", {})
     pointer_tables = report["firmware"].get("string_pointer_tables", [])
     literal_pool_refs = report["firmware"].get("literal_pool_refs", [])
+    dispatcher_hypothesis = report["firmware"].get("dispatcher_hypothesis", {})
     layout = report["digimanager"]["command35_layout"]
     lines = [
         "# 真实 0.3q 中 `command 0x35` 处理路径分析",
@@ -650,6 +695,20 @@ def render_command35_markdown(report: dict[str, Any]) -> str:
         lines.append(f"### {item['label']} @ {item['center_offset']:#06x}")
         lines.extend(f"- `{line}`" for line in item["lines"])
         lines.append("")
+    lines.append("## `0x35` 通用分支推断")
+    if dispatcher_hypothesis:
+        lines.append(f"- 根分发区：`{dispatcher_hypothesis['dispatcher_root_offset']:#06x}`")
+        lines.append(f"- 通用分支入口：`{dispatcher_hypothesis['generic_parse_entry_offset']:#06x}`")
+        lines.append(
+            f"- 通用 helper 调用：`{dispatcher_hypothesis['generic_parse_helper_call_offset']:#06x}` -> "
+            f"`{dispatcher_hypothesis['generic_parse_helper_target']:#06x}`"
+        )
+        lines.append(f"- 当前判断：{dispatcher_hypothesis['command_0x35_interpretation']}")
+        lines.append("- 对 `0x35` 的候选控制流：")
+        lines.extend(f"  - `{item}`" for item in dispatcher_hypothesis["command_0x35_flow"])
+        lines.append("- 通用 helper 输出位点：")
+        lines.extend(f"  - `{item}`" for item in dispatcher_hypothesis["generic_parse_outputs"])
+    lines.append("")
     lines.append("## 字符串指针表候选")
     for item in pointer_tables[:8]:
         lines.append(
