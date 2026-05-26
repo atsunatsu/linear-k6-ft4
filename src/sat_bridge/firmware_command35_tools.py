@@ -35,6 +35,23 @@ MODE_STRING_PATTERNS = {
     "RECV": b"RECV",
     "AUTO": b"AUTO",
 }
+DESCRIPTOR_INTERESTING_STRINGS = {
+    "FT8",
+    "FT4",
+    "APRS",
+    "WSPR",
+    "SCAN",
+    "RECV",
+    "AUTO",
+    "VOX",
+    "DIG+",
+    "DIG.M",
+    "LOCK\nKEYPAD",
+    "FM",
+    "CT",
+    "DCS",
+    "DCR",
+}
 KNOWN_DISPATCH_SEEDS = [3496]
 KNOWN_PUBLIC_OBCFUSCATION = bytes.fromhex("166c14e62e910d402135d5401303e980")
 
@@ -85,6 +102,10 @@ def analyze_command35_path(
         ]
         for value in COMMAND_SCAN_VALUES
     }
+    validated_compare_hits = {
+        key: validate_compare_hits(raw_firmware, hits)
+        for key, hits in compare_hits.items()
+    }
     seeded_compare_hits = {
         f"0x{value:02x}": [
             {"offset": hit.offset, "instruction": hit.instruction}
@@ -92,10 +113,22 @@ def analyze_command35_path(
         ]
         for value in COMMAND_SCAN_VALUES
     }
+    validated_seeded_compare_hits = {
+        key: validate_compare_hits(raw_firmware, hits)
+        for key, hits in seeded_compare_hits.items()
+    }
 
     firmware_frame_matches = find_firmware_frame_family_matches(raw_firmware, command35_layout)
     digital_mode_strings = find_digital_mode_strings(raw_firmware)
     constant_cluster = describe_constant_cluster(raw_firmware, cluster_offset=0xDE94)
+    pointer_tables = find_string_pointer_tables(raw_firmware)
+    literal_targets: list[int] = []
+    for item in pointer_tables:
+        if not item.get("contains_interesting_strings"):
+            continue
+        literal_targets.append(item["offset"])
+        literal_targets.extend(entry["entry_offset"] for entry in item["entries"])
+    literal_pool_refs = find_literal_pool_refs_to_values(raw_firmware, literal_targets)
     candidate_windows = _build_candidate_windows(raw_firmware, compare_hits, seeded_compare_hits)
     string_windows = _build_string_windows(raw_firmware)
 
@@ -110,10 +143,14 @@ def analyze_command35_path(
             "embedded_version": unpacked.get("embedded_version"),
             "command_immediate_hits": immediate_hits,
             "command_compare_hits": compare_hits,
+            "command_compare_hits_validated": validated_compare_hits,
             "command_compare_hits_seeded": seeded_compare_hits,
+            "command_compare_hits_seeded_validated": validated_seeded_compare_hits,
             "frame_family_matches": firmware_frame_matches,
             "digital_mode_strings": digital_mode_strings,
             "constant_cluster": constant_cluster,
+            "string_pointer_tables": pointer_tables,
+            "literal_pool_refs": literal_pool_refs,
             "candidate_dispatch_windows": [
                 {
                     "label": item.label,
@@ -159,7 +196,7 @@ def find_exact_immediate_hits(raw_firmware: bytes, immediate: int, *, limit: int
     md = Cs(CS_ARCH_ARM, CS_MODE_THUMB)
     decimal = str(immediate)
     hexa = f"0x{immediate:x}"
-    for ins in md.disasm(raw_firmware, 1):
+    for ins in md.disasm(raw_firmware, 0):
         operands = [operand.strip() for operand in ins.op_str.split(",") if operand.strip()]
         if not any(operand == f"#{decimal}" or operand == f"#{hexa}" for operand in operands):
             continue
@@ -174,7 +211,7 @@ def find_exact_compare_hits(raw_firmware: bytes, immediate: int, *, limit: int =
     md = Cs(CS_ARCH_ARM, CS_MODE_THUMB)
     decimal = str(immediate)
     hexa = f"0x{immediate:x}"
-    for ins in md.disasm(raw_firmware, 1):
+    for ins in md.disasm(raw_firmware, 0):
         if not ins.mnemonic.startswith("cmp"):
             continue
         operands = [operand.strip() for operand in ins.op_str.split(",") if operand.strip()]
@@ -202,7 +239,7 @@ def find_exact_compare_hits_in_windows(
     for center in centers:
         start = max(0, center - before)
         end = min(len(raw_firmware), center + after)
-        for ins in md.disasm(raw_firmware[start:end], start | 1):
+        for ins in md.disasm(raw_firmware[start:end], start):
             if not ins.mnemonic.startswith("cmp"):
                 continue
             operands = [operand.strip() for operand in ins.op_str.split(",") if operand.strip()]
@@ -213,6 +250,28 @@ def find_exact_compare_hits_in_windows(
             seen_offsets.add(ins.address)
             hits.append(CapstoneHit(offset=ins.address, instruction=f"{ins.mnemonic} {ins.op_str}".rstrip()))
     return sorted(hits, key=lambda item: item.offset)
+
+
+def validate_compare_hits(raw_firmware: bytes, hits: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    validated: list[dict[str, Any]] = []
+    md = Cs(CS_ARCH_ARM, CS_MODE_THUMB)
+    for hit in hits:
+        offset = int(hit["offset"])
+        chunk = raw_firmware[offset:offset + 4]
+        decoded = list(md.disasm(chunk, offset | 1))
+        if not decoded:
+            continue
+        ins = decoded[0]
+        rendered = f"{ins.mnemonic} {ins.op_str}".rstrip()
+        if rendered != hit["instruction"]:
+            continue
+        validated.append(
+            {
+                "offset": offset,
+                "instruction": rendered,
+            }
+        )
+    return validated
 
 
 def infer_command35_layout(digimanager_methods: dict[str, dict[str, Any]]) -> dict[str, Any]:
@@ -261,6 +320,102 @@ def find_digital_mode_strings(raw_firmware: bytes) -> dict[str, list[int]]:
     }
 
 
+def find_string_pointer_tables(
+    raw_firmware: bytes,
+    *,
+    min_entries: int = 2,
+    max_small_value: int = 0x1000,
+) -> list[dict[str, Any]]:
+    tables: list[dict[str, Any]] = []
+    seen_offsets: set[int] = set()
+    for offset in range(0, len(raw_firmware) - 8, 4):
+        if offset in seen_offsets:
+            continue
+        pointer = int.from_bytes(raw_firmware[offset:offset + 4], "little")
+        tag_value = int.from_bytes(raw_firmware[offset + 4:offset + 8], "little")
+        text = _read_short_ascii(raw_firmware, pointer)
+        if not text or tag_value > max_small_value:
+            continue
+        entries: list[dict[str, Any]] = []
+        cursor = offset
+        while cursor + 8 <= len(raw_firmware):
+            pointer = int.from_bytes(raw_firmware[cursor:cursor + 4], "little")
+            tag_value = int.from_bytes(raw_firmware[cursor + 4:cursor + 8], "little")
+            text = _read_short_ascii(raw_firmware, pointer)
+            if not text or tag_value > max_small_value:
+                break
+            entries.append(
+                {
+                    "entry_offset": cursor,
+                    "string_offset": pointer,
+                    "text": text,
+                    "tag_value": tag_value,
+                }
+            )
+            seen_offsets.add(cursor)
+            cursor += 8
+        if len(entries) < min_entries:
+            continue
+        tables.append(
+            {
+                "offset": offset,
+                "entry_count": len(entries),
+                "entries": entries,
+                "contains_interesting_strings": any(
+                    item["text"] in DESCRIPTOR_INTERESTING_STRINGS for item in entries
+                ),
+            }
+        )
+    return tables
+
+
+def find_literal_pool_refs_to_values(
+    raw_firmware: bytes,
+    target_values: list[int],
+) -> list[dict[str, Any]]:
+    if not target_values:
+        return []
+
+    wanted = set(target_values)
+    refs: list[dict[str, Any]] = []
+    md = Cs(CS_ARCH_ARM, CS_MODE_THUMB)
+    md.detail = True
+    for ins in md.disasm(raw_firmware, 0):
+        if ins.mnemonic != "ldr" or len(ins.operands) < 2:
+            continue
+        src = ins.operands[1]
+        if src.type != ARM_OP_MEM or src.mem.base != ARM_REG_PC:
+            continue
+        literal_offset = ((ins.address + 4) & ~3) + src.mem.disp
+        if literal_offset < 0 or literal_offset + 4 > len(raw_firmware):
+            continue
+        loaded_value = int.from_bytes(raw_firmware[literal_offset:literal_offset + 4], "little")
+        if loaded_value not in wanted:
+            continue
+        refs.append(
+            {
+                "instruction_offset": ins.address,
+                "instruction": f"{ins.mnemonic} {ins.op_str}".rstrip(),
+                "literal_pool_offset": literal_offset,
+                "loaded_value": loaded_value,
+            }
+        )
+    return refs
+
+
+def _read_short_ascii(raw_firmware: bytes, offset: int, *, max_len: int = 32) -> str:
+    if offset < 0 or offset >= len(raw_firmware):
+        return ""
+    end = raw_firmware.find(b"\x00", offset)
+    if end == -1 or end - offset <= 0 or end - offset > max_len:
+        return ""
+    chunk = raw_firmware[offset:end]
+    try:
+        return chunk.decode("ascii")
+    except UnicodeDecodeError:
+        return ""
+
+
 def describe_constant_cluster(raw_firmware: bytes, *, cluster_offset: int) -> dict[str, Any]:
     entries: list[dict[str, Any]] = []
     for index in range(0, 0x40, 4):
@@ -301,12 +456,15 @@ def find_all_bytes(raw_firmware: bytes, pattern: bytes, *, limit: int = 20) -> l
 
 
 def infer_command35_judgement(report: dict[str, Any]) -> dict[str, Any]:
-    compare_hits = report["firmware"]["command_compare_hits"]
-    seeded_compare_hits = report["firmware"].get("command_compare_hits_seeded", {})
+    compare_hits = report["firmware"].get("command_compare_hits_validated", {})
+    seeded_compare_hits = report["firmware"].get("command_compare_hits_seeded_validated", {})
+    raw_compare_hits = report["firmware"]["command_compare_hits"]
     immediate_hits = report["firmware"]["command_immediate_hits"]
     frame_matches = report["firmware"]["frame_family_matches"]
     digital_mode_strings = report["firmware"].get("digital_mode_strings", {})
     constant_cluster = report["firmware"].get("constant_cluster", {})
+    pointer_tables = report["firmware"].get("string_pointer_tables", [])
+    literal_pool_refs = report["firmware"].get("literal_pool_refs", [])
     replay = report["replay"]
 
     effective_35 = compare_hits.get("0x35") or seeded_compare_hits.get("0x35") or []
@@ -326,6 +484,8 @@ def infer_command35_judgement(report: dict[str, Any]) -> dict[str, Any]:
         handler_model = "direct_command_dispatch_seen"
     elif has_32 or has_33:
         handler_model = "adjacent_command_dispatch_seen_but_0x35_not_literal"
+    elif raw_compare_hits.get("0x32") or raw_compare_hits.get("0x33"):
+        handler_model = "raw_sweep_hits_present_but_not_revalidated"
     else:
         handler_model = "no_reliable_dispatch_anchor_yet"
 
@@ -356,6 +516,12 @@ def infer_command35_judgement(report: dict[str, Any]) -> dict[str, Any]:
             "在 `0xDE94` 附近还能看到一个混合常量簇，前半段是 `FM/CT/DCS/DCR` 字符串指针，"
             "后半段紧接 DigiManager 同源的 STX/ETX 和一组数字参数，像是模式描述表或第二阶段解析参数表。"
         )
+    interesting_tables = [item for item in pointer_tables if item.get("contains_interesting_strings")]
+    if interesting_tables:
+        summary_lines.append(
+            "真实固件里还能识别出多张字符串指针表，其中至少有一部分被真实代码通过 "
+            "PC 相对 literal pool 引用，说明固件很可能大量依赖表驱动的模式/设置描述结构。"
+        )
     if has_direct_35:
         summary_lines.extend(
             [
@@ -369,6 +535,13 @@ def infer_command35_judgement(report: dict[str, Any]) -> dict[str, Any]:
                 "真实固件里已经能看到 0x32 和 0x33 的候选分发点，但还没有直接看到字面比较 0x35 的处理点。",
                 "因此更可能的情况是：0x35 不是简单单字节命令直接分发，而是进入了另一层解析，或被归入更上层命令家族处理。",
                 "下一步最值钱的是继续围绕 0x32/0x33 邻近分发块，以及帧头/帧尾常量所在的数据家族，追 0x35 在固件里的第二阶段解释路径。",
+            ]
+        )
+    elif raw_compare_hits.get("0x32") or raw_compare_hits.get("0x33"):
+        summary_lines.extend(
+            [
+                "之前线性扫全镜像时曾命中过 0x32/0x33 比较点，但在从命中地址重新局部反汇编时没有复现，说明这些点很可能是把数据区误解成代码的假阳性。",
+                "因此当前还不能把 0x32/0x33 当成可靠锚点，下一步更应该围绕 `0xDE94` 常量簇和同协议家族常量追真正的代码引用。",
             ]
         )
     else:
@@ -396,6 +569,7 @@ def infer_command35_judgement(report: dict[str, Any]) -> dict[str, Any]:
             "0x33": effective_33,
             "0x35": effective_35,
         },
+        "raw_compare_hits": raw_compare_hits,
         "likely_handler_model": handler_model,
         "ft4_upstream_is_real": True,
         "timing_owner_guess": "firmware_or_joint_path_more_likely_than_digimanager_only",
@@ -413,6 +587,8 @@ def render_command35_markdown(report: dict[str, Any]) -> str:
     frame_matches = report["firmware"]["frame_family_matches"]
     mode_strings = report["firmware"].get("digital_mode_strings", {})
     constant_cluster = report["firmware"].get("constant_cluster", {})
+    pointer_tables = report["firmware"].get("string_pointer_tables", [])
+    literal_pool_refs = report["firmware"].get("literal_pool_refs", [])
     layout = report["digimanager"]["command35_layout"]
     lines = [
         "# 真实 0.3q 中 `command 0x35` 处理路径分析",
@@ -456,6 +632,11 @@ def render_command35_markdown(report: dict[str, Any]) -> str:
             f"- 常量簇起点：`{hex(constant_cluster.get('cluster_offset', 0))}`",
             f"- 可直接解读出的字符串指针：`{', '.join(item['points_to_ascii'] for item in constant_cluster.get('entries', []) if item.get('points_to_ascii')) or '无'}`",
             "",
+            "## 固件里的字符串指针表",
+            f"- 指针表总数：`{len(pointer_tables)}`",
+            f"- 明显带数字模式/设置语义的表：`{', '.join(hex(item['offset']) for item in pointer_tables if item.get('contains_interesting_strings')) or '未识别'}`",
+            f"- 指向这些表的 PC 相对取值引用数：`{len(literal_pool_refs)}`",
+            "",
             "## 固件侧命中点",
             f"- 直接 `cmp ..., #0x35` 是否命中：`{judgement['firmware_direct_cmp_0x35']}`",
             f"- `cmp ..., #0x32` 邻近分发是否命中：`{judgement['firmware_adjacent_dispatchers']['0x32_seen']}`",
@@ -469,6 +650,22 @@ def render_command35_markdown(report: dict[str, Any]) -> str:
         lines.append(f"### {item['label']} @ {item['center_offset']:#06x}")
         lines.extend(f"- `{line}`" for line in item["lines"])
         lines.append("")
+    lines.append("## 字符串指针表候选")
+    for item in pointer_tables[:8]:
+        lines.append(
+            f"### table @ {item['offset']:#06x} ({item['entry_count']} entries, interesting={item['contains_interesting_strings']})"
+        )
+        for entry in item["entries"][:8]:
+            lines.append(
+                f"- `{entry['entry_offset']:#06x}` -> `{entry['text']}` (str @ {entry['string_offset']:#06x}, tag={entry['tag_value']:#x})"
+            )
+        lines.append("")
+    lines.append("## 指向这些表的 literal pool 引用")
+    for item in literal_pool_refs[:12]:
+        lines.append(
+            f"- `{item['instruction_offset']:#06x} {item['instruction']}` -> pool `{item['literal_pool_offset']:#06x}` => `{item['loaded_value']:#06x}`"
+        )
+    lines.append("")
     lines.append("## 字符串锚点窗口")
     for item in report["firmware"]["string_anchor_windows"]:
         lines.append(f"### {item['label']} @ {item['center_offset']:#06x}")
@@ -477,9 +674,13 @@ def render_command35_markdown(report: dict[str, Any]) -> str:
     lines.append("## 当前建议")
     if judgement["firmware_direct_cmp_0x35"] == "yes":
         lines.append("- 继续围绕直接命中的 `cmp ..., #0x35` 候选点向下追，确认它后面如何进入数字模式发送路径。")
+    elif judgement["likely_handler_model"] == "raw_sweep_hits_present_but_not_revalidated":
+        lines.append("- 之前扫出来的 `0x32 / 0x33` 命中点没有通过局部反汇编复验，当前应把它们视为低可信提示，不再继续沿它们做强结论。")
+        lines.append("- 下一步改为优先追 `0xDE94 ~ 0xDEBC` 常量簇和 `FT8 / APRS / WSPR` 等模式字符串的真实代码引用。")
     else:
-        lines.append("- 继续沿 `0x32 / 0x33` 邻近分发块向下追第二阶段解析路径，不再把 command 0x35 简化理解成“单字节命令直接分发”。")
-    lines.append("- 优先把 `0xdea0` 附近这块常量区当成同协议家族常量区继续追引用，因为这里同时出现了帧头、帧尾和数字模式相关参数。")
+        lines.append("- 当前还没有可靠的命令分发锚点，优先去找 `0xDE94 ~ 0xDEBC` 常量簇和模式字符串的真实代码引用。")
+    lines.append("- 这轮新增的重点是：优先跟踪‘字符串指针表 -> PC 相对 literal pool -> 真实代码入口’这条链，而不是再依赖全镜像线性反汇编扫出来的单点命中。")
+    lines.append("- 优先把 `0xDE94 ~ 0xDEBC` 这块常量簇当成同协议家族常量区继续追引用，因为这里同时出现了模式字符串指针、帧头、帧尾和数字模式相关参数。")
     lines.append("- 如果后续需要现场验证，优先考虑串口层抓到实际 `0x35` 帧，再反推固件 parser。")
     return "\n".join(lines) + "\n"
 
@@ -614,12 +815,14 @@ def _build_string_windows(raw_firmware: bytes) -> list[CapstoneWindow]:
 def _disassemble_window(raw_firmware: bytes, center_offset: int, *, label: str, before: int = 96, after: int = 96) -> CapstoneWindow:
     start = max(0, center_offset - before)
     end = min(len(raw_firmware), center_offset + after)
-    md = Cs(CS_ARCH_ARM, CS_MODE_THUMB)
     lines: list[str] = []
-    for ins in md.disasm(raw_firmware[start:end], start | 1):
-        if ins.address < center_offset - 40:
+    md = Cs(CS_ARCH_ARM, CS_MODE_THUMB)
+    lower = center_offset - 40
+    upper = center_offset + 40
+    for ins in md.disasm(raw_firmware[start:end], start):
+        if ins.address < lower:
             continue
-        if ins.address > center_offset + 40:
+        if ins.address > upper:
             break
         lines.append(f"{ins.address:#06x} {ins.mnemonic} {ins.op_str}".rstrip())
     return CapstoneWindow(label=label, center_offset=center_offset, start_offset=start, end_offset=end, lines=lines)

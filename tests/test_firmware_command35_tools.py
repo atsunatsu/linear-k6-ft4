@@ -19,8 +19,8 @@ class FirmwareCommand35ToolsTests(unittest.TestCase):
         raw = bytes.fromhex("32 20 33 21 35 22")
         hits_32 = find_exact_immediate_hits(raw, 0x32, limit=4)
         hits_35 = find_exact_immediate_hits(raw, 0x35, limit=4)
-        self.assertEqual([item.offset for item in hits_32], [1])
-        self.assertEqual([item.offset for item in hits_35], [5])
+        self.assertEqual([item.offset for item in hits_32], [0])
+        self.assertEqual([item.offset for item in hits_35], [4])
 
     def test_analyze_single_replay_marks_sparse_business_packets(self) -> None:
         report = _analyze_single_replay(Path("samples/replay/ft4-replay.json"))
@@ -42,6 +42,18 @@ class FirmwareCommand35ToolsTests(unittest.TestCase):
                     "0x30": [],
                     "0x32": [{"offset": 0x0D91, "instruction": "cmp r0, #0x32"}],
                     "0x33": [{"offset": 0x0DFD, "instruction": "cmp r0, #0x33"}],
+                    "0x35": [],
+                },
+                "command_compare_hits_validated": {
+                    "0x30": [],
+                    "0x32": [{"offset": 0x0D91, "instruction": "cmp r0, #0x32"}],
+                    "0x33": [{"offset": 0x0DFD, "instruction": "cmp r0, #0x33"}],
+                    "0x35": [],
+                },
+                "command_compare_hits_seeded_validated": {
+                    "0x30": [],
+                    "0x32": [],
+                    "0x33": [],
                     "0x35": [],
                 },
                 "frame_family_matches": {
@@ -70,6 +82,19 @@ class FirmwareCommand35ToolsTests(unittest.TestCase):
         self.assertTrue(judgement["firmware_mode_strings"]["ft8_present"])
         self.assertFalse(judgement["firmware_mode_strings"]["ft4_present"])
 
+    def test_real_assets_currently_do_not_revalidate_32_or_33_hits(self) -> None:
+        report = analyze_command35_path(
+            firmware_path=Path("reverse/input/firmware/cec_0.3QB.packed.bin"),
+            digimanager_path=Path("reverse/input/digimanager/UVK5DigManager.exe"),
+            ft4_replay_path=Path("samples/replay/ft4-replay.json"),
+            ft8_replay_path=Path("samples/replay/ft8-replay.json"),
+        )
+        self.assertEqual(report["firmware"]["command_compare_hits_validated"]["0x32"], [])
+        self.assertEqual(report["firmware"]["command_compare_hits_validated"]["0x33"], [])
+        self.assertTrue(report["firmware"]["command_compare_hits_seeded_validated"]["0x32"])
+        self.assertTrue(report["firmware"]["command_compare_hits_seeded_validated"]["0x33"])
+        self.assertEqual(report["judgement"]["likely_handler_model"], "adjacent_command_dispatch_seen_but_0x35_not_literal")
+
     def test_real_assets_show_shared_frame_family_constants(self) -> None:
         report = analyze_command35_path(
             firmware_path=Path("reverse/input/firmware/cec_0.3QB.packed.bin"),
@@ -88,6 +113,23 @@ class FirmwareCommand35ToolsTests(unittest.TestCase):
         self.assertIn("CT", cluster_labels)
         self.assertIn("DCS", cluster_labels)
         self.assertIn("DCR", cluster_labels)
+
+    def test_real_assets_show_table_driven_string_structures(self) -> None:
+        report = analyze_command35_path(
+            firmware_path=Path("reverse/input/firmware/cec_0.3QB.packed.bin"),
+            digimanager_path=Path("reverse/input/digimanager/UVK5DigManager.exe"),
+            ft4_replay_path=Path("samples/replay/ft4-replay.json"),
+            ft8_replay_path=Path("samples/replay/ft8-replay.json"),
+        )
+        tables = report["firmware"]["string_pointer_tables"]
+        interesting = [item for item in tables if item["contains_interesting_strings"]]
+        self.assertTrue(any(item["offset"] == 0xD778 for item in interesting))
+        dispatch_windows = {
+            item["label"]: item["lines"]
+            for item in report["firmware"]["candidate_dispatch_windows"]
+        }
+        self.assertIn("dispatcher_near_0x32", dispatch_windows)
+        self.assertTrue(any("cmp r0, #0x32" in line for line in dispatch_windows["dispatcher_near_0x32"]))
 
 
 if __name__ == "__main__":  # pragma: no cover
