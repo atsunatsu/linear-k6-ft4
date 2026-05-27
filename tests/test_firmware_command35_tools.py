@@ -189,6 +189,18 @@ class FirmwareCommand35ToolsTests(unittest.TestCase):
             report["firmware"]["helper_semantics"]["0x888C"]["role"],
             "table classifier",
         )
+        self.assertEqual(
+            report["firmware"]["helper_semantics"]["0x8148"]["role"],
+            "small frame constructor",
+        )
+        self.assertEqual(
+            report["firmware"]["helper_semantics"]["0x2620"]["role"],
+            "small record emitter",
+        )
+        self.assertEqual(
+            report["firmware"]["helper_semantics"]["0xAC0C"]["role"],
+            "hardware mode sequencer",
+        )
 
         window_callees = {item["target_offset"] for item in report["firmware"]["dispatcher_window_callees"]}
         self.assertTrue({0x0280, 0x7618, 0x7714, 0x888C, 0x0BD0}.issubset(window_callees))
@@ -199,8 +211,14 @@ class FirmwareCommand35ToolsTests(unittest.TestCase):
 
         context_hub_callees = {item["target_offset"] for item in report["firmware"]["context_hub_callees"]}
         self.assertIn(0x7714, context_hub_callees)
+        self.assertIn(0x7E02, context_hub_callees)
+        self.assertIn(0x8148, context_hub_callees)
+        self.assertIn(0xAC0C, context_hub_callees)
         self.assertIn(0x0564, helper_callers["0x76A8"])
         self.assertTrue(any(item["center_offset"] == 0x04D6 for item in report["firmware"]["context_hub_windows"]))
+        downstream = report["judgement"]["likely_downstream_send_chain"]
+        self.assertIn("0x8148", downstream["context_consumer_layer"])
+        self.assertIn("0x2620", downstream["lower_output_or_control_layer"])
 
 
 if __name__ == "__main__":  # pragma: no cover

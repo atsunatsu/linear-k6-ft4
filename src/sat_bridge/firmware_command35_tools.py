@@ -167,7 +167,7 @@ def analyze_command35_path(
     string_windows = _build_string_windows(raw_firmware)
     dispatcher_hypothesis = infer_dispatcher_hypothesis()
     generic_parse_profiles = decode_generic_parse_profiles(raw_firmware)
-    helper_targets = [0x0280, 0x75FC, 0x7618, 0x76A8, 0x7714, 0x7750, 0x888C, 0x7458, 0x0BD0]
+    helper_targets = [0x0280, 0x75FC, 0x7618, 0x76A8, 0x7714, 0x774E, 0x7750, 0x7E02, 0x8148, 0x8538, 0x888C, 0x0BD0, 0x1054, 0x1278, 0x1500, 0x2620, 0x7954, 0xAC0C]
     helper_callers = find_bl_callers(raw_firmware, helper_targets)
     for item in dispatcher_window_callees:
         key = f"0x{item['target_offset']:04X}"
@@ -421,9 +421,53 @@ def infer_helper_semantics() -> dict[str, dict[str, str]]:
             "role": "search / selection helper",
             "reason": "Iterates candidate values until helper 0x76A8 accepts one, then returns the selected byte or 0xFF.",
         },
+        "0x774E": {
+            "role": "context-byte selector",
+            "reason": "Loads a context-backed table, asks helper 0x75FC for a mode class, then computes and stores a selected byte near context+0x28.",
+        },
+        "0x7954": {
+            "role": "context commit helper",
+            "reason": "Appears only after the context-preparation window has already selected and staged bytes, so it looks more like a commit step than a top-level parser.",
+        },
+        "0x7E02": {
+            "role": "record-family selector",
+            "reason": "Indexes 0x44-byte records, adjusts a record-local byte, and prepares a context pointer for later consumers rather than directly emitting a symbol stream.",
+        },
+        "0x8148": {
+            "role": "small frame constructor",
+            "reason": "Builds an 8-byte local record from a compact global table, then immediately forwards it into helper 0x2620.",
+        },
+        "0x8538": {
+            "role": "context-dependent sideband updater",
+            "reason": "Only appears after the context window has compared two selected values and loaded a side byte, so it looks like a sideband/profile updater, not a final sender.",
+        },
         "0x888C": {
             "role": "table classifier",
             "reason": "Indexes a compact table using one state byte and returns a class byte, not a symbol stream.",
+        },
+        "0x1054": {
+            "role": "low-level register bit shifter",
+            "reason": "Directly toggles bits in a global register block and interleaves the writes with helper 0xFB8 delays, which looks like hardware line control.",
+        },
+        "0x1278": {
+            "role": "low-level register strober",
+            "reason": "Sets and clears a small pair of control bits around delay calls, which is characteristic of a GPIO or peripheral strobe helper.",
+        },
+        "0x1500": {
+            "role": "mode line setter",
+            "reason": "Called by the deeper control path with tiny literal arguments such as 1, 5, and 6, suggesting a small hardware or mode-selection API.",
+        },
+        "0x1F0C": {
+            "role": "send-enable preamble",
+            "reason": "Raises and clears several control bits with repeated 0xFB8 waits, matching a transmit-path enable or framing preamble sequence.",
+        },
+        "0x2620": {
+            "role": "small record emitter",
+            "reason": "Validates an 8-byte record, compares it against a local scratch buffer, then serially emits header bytes and payload through helper calls 0x20A8 and 0xA668.",
+        },
+        "0xAC0C": {
+            "role": "hardware mode sequencer",
+            "reason": "Reads mode bytes from the main context block, calls small mode setters, then toggles low-level helpers 0x1278 and 0x1054 to prepare hardware state.",
         },
     }
 
@@ -761,8 +805,8 @@ def infer_command35_judgement(report: dict[str, Any]) -> dict[str, Any]:
     pointer_tables = report["firmware"].get("string_pointer_tables", [])
     dispatcher_runtime_refs = report["firmware"].get("dispatcher_runtime_refs", [])
     dispatcher_window_callees = report["firmware"].get("dispatcher_window_callees", [])
+    context_hub_callees = report["firmware"].get("context_hub_callees", [])
     helper_callers = report["firmware"].get("helper_callers", {})
-    helper_semantics = report["firmware"].get("helper_semantics", {})
     helper_semantics = report["firmware"].get("helper_semantics", {})
     replay = report["replay"]
 
@@ -832,6 +876,22 @@ def infer_command35_judgement(report: dict[str, Any]) -> dict[str, Any]:
                 "以 `0x0D02~0x0E0C` 为中心的同一函数同时调用了 `0x0280`、`0x7618`、`0x7714`、`0x888C` 和 `0x0BD0`，"
                 "更像上层模式/范围/分类状态机，而不像最终数字发送器。"
             )
+    if context_hub_callees:
+        hub_callee_set = {item["target_offset"] for item in context_hub_callees}
+        if {0x7E02, 0x8148, 0xAC0C}.issubset(hub_callee_set):
+            summary_lines.append(
+                "更下游的 `0x044E/0x04D6/0x0520` 窗口已经开始调用 `0x7E02`、`0x8148` 和 `0xAC0C`，"
+                "这更像状态机之后的上下文消费层，而不是继续做上层分类。"
+            )
+        if 0x8148 in hub_callee_set:
+            summary_lines.append(
+                "`0x8148` 会组出一个 8 字节小记录并直接交给 `0x2620`，说明真正的发送路径更可能从这些小记录发射器往下展开。"
+            )
+        if 0xAC0C in hub_callee_set:
+            summary_lines.append(
+                "`0xAC0C` 会继续调用 `0x1500`、`0x1278` 和 `0x1054` 这类更靠近硬件控制的 helper，"
+                "说明数字模式路径已经从分类层进入硬件准备层。"
+            )
     if helper_semantics.get("0x7714") and helper_semantics.get("0x888C"):
         summary_lines.append(
             "目前已确认的 helper 语义也支持这一点：`0x888C` 更像表分类器，`0x7714` 更像搜索/选择器，都不像最终符号发射器。"
@@ -864,6 +924,9 @@ def infer_command35_judgement(report: dict[str, Any]) -> dict[str, Any]:
     summary_lines.append(
         "当前最可信的解释是：0x35 会先落入 0x32/0x33 邻近的通用分支，再由 0x0280 这种二级 helper 做分类，"
         "而不是一开始就进入最终数字发送层。"
+    )
+    summary_lines.append(
+        "当前更接近真实发送层的候选链已经收窄到：`0x044E/0x04D6/0x0520 -> 0x7E02/0x8148/0xAC0C -> 0x2620/0x1278/0x1054`。"
     )
 
     return {
@@ -902,6 +965,11 @@ def infer_command35_judgement(report: dict[str, Any]) -> dict[str, Any]:
             if dispatcher_runtime_refs
             else "not_enough_runtime_state_evidence"
         ),
+        "likely_downstream_send_chain": {
+            "state_layer": ["0x0D02", "0x0DBE", "0x0280", "0x888C", "0x7618", "0x7714", "0x0BD0"],
+            "context_consumer_layer": ["0x044E", "0x04D6", "0x0520", "0x7E02", "0x8148", "0xAC0C", "0x774E", "0x76A8", "0x8538"],
+            "lower_output_or_control_layer": ["0x2620", "0x1F0C", "0x1500", "0x1278", "0x1054"],
+        },
         "dispatcher_helper_call_graph": helper_callers,
         "summary_lines": summary_lines,
     }
@@ -923,6 +991,7 @@ def render_command35_markdown(report: dict[str, Any]) -> str:
     helper_callers = report["firmware"].get("helper_callers", {})
     helper_semantics = report["firmware"].get("helper_semantics", {})
     layout = report["digimanager"]["command35_layout"]
+    downstream = judgement.get("likely_downstream_send_chain", {})
 
     lines = ["# 真实 0.3q 中 `command 0x35` 处理路径分析", "", "## 当前结论"]
     lines.extend(f"- {item}" for item in judgement["summary_lines"])
@@ -1051,6 +1120,19 @@ def render_command35_markdown(report: dict[str, Any]) -> str:
         for key, item in helper_semantics.items():
             lines.append(f"- `{key}`：`{item['role']}`")
             lines.append(f"  - {item['reason']}")
+        lines.append("")
+
+    if downstream:
+        lines.append("## 当前更接近真实发送层的路径分层")
+        lines.append(
+            f"- 上层状态/分类层：`{', '.join(downstream.get('state_layer', []))}`"
+        )
+        lines.append(
+            f"- 上下文消费/发送准备层：`{', '.join(downstream.get('context_consumer_layer', []))}`"
+        )
+        lines.append(
+            f"- 更低层输出/硬件控制层：`{', '.join(downstream.get('lower_output_or_control_layer', []))}`"
+        )
         lines.append("")
 
     lines.append("## 字符串指针表候选")
