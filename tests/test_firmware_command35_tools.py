@@ -143,11 +143,30 @@ class FirmwareCommand35ToolsTests(unittest.TestCase):
         self.assertEqual(hypothesis["generic_parse_entry_offset"], 0x0DBE)
         self.assertEqual(hypothesis["generic_parse_helper_target"], 0x0280)
         self.assertTrue(any("0x0DBE" in item for item in hypothesis["command_0x35_flow"]))
-        profiles = report["firmware"]["generic_parse_profiles"]["command_cases"]
+        self.assertEqual(hypothesis["contextual_function_hint"]["classification_helper"], 0x888C)
+        profiles = report["firmware"]["generic_parse_profiles"]["subcode_cases"]
         self.assertEqual(profiles["0x35"]["target_offset"], 0x02EA)
         self.assertEqual(profiles["0x35"]["derived_outputs"]["out_b"], 0x03)
         self.assertEqual(profiles["0x32"]["target_offset"], 0x031E)
         self.assertEqual(profiles["0x32"]["derived_outputs"]["out_b"], 0xA9)
+
+    def test_real_assets_expose_dispatcher_runtime_state_refs(self) -> None:
+        report = analyze_command35_path(
+            firmware_path=Path("reverse/input/firmware/cec_0.3QB.packed.bin"),
+            digimanager_path=Path("reverse/input/digimanager/UVK5DigManager.exe"),
+            ft4_replay_path=Path("samples/replay/ft4-replay.json"),
+            ft8_replay_path=Path("samples/replay/ft8-replay.json"),
+        )
+        runtime_refs = report["firmware"]["dispatcher_runtime_refs"]
+        values = {item["loaded_value"] for item in runtime_refs}
+        labels = {item["label"] for item in runtime_refs}
+        self.assertIn(0x20000094, values)
+        self.assertIn(0x7FFFFFFF, values)
+        self.assertIn("state_cell_primary", labels)
+        self.assertEqual(
+            report["judgement"]["dispatcher_runtime_state_model"],
+            "generic_branch_looks_more_like_bounded_state_machine_than_full_symbol_stream",
+        )
 
 
 if __name__ == "__main__":  # pragma: no cover

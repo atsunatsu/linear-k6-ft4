@@ -56,6 +56,11 @@ KNOWN_DISPATCH_SEEDS = [3496]
 KNOWN_PUBLIC_OBCFUSCATION = bytes.fromhex("166c14e62e910d402135d5401303e980")
 GENERIC_PARSE_DISPATCH_BASE = 0x028E
 GENERIC_PARSE_HELPER_TARGET = 0x0280
+DISPATCH_RUNTIME_VALUES = {
+    0x20000094: "state_cell_primary",
+    0x20000740: "guard_or_context_block",
+    0x7FFFFFFF: "signed_saturation_sentinel",
+}
 
 
 @dataclass(slots=True)
@@ -124,13 +129,18 @@ def analyze_command35_path(
     digital_mode_strings = find_digital_mode_strings(raw_firmware)
     constant_cluster = describe_constant_cluster(raw_firmware, cluster_offset=0xDE94)
     pointer_tables = find_string_pointer_tables(raw_firmware)
-    literal_targets: list[int] = []
+    literal_targets: list[int] = list(DISPATCH_RUNTIME_VALUES)
     for item in pointer_tables:
         if not item.get("contains_interesting_strings"):
             continue
         literal_targets.append(item["offset"])
         literal_targets.extend(entry["entry_offset"] for entry in item["entries"])
     literal_pool_refs = find_literal_pool_refs_to_values(raw_firmware, literal_targets)
+    dispatcher_runtime_refs = find_literal_pool_refs_in_windows(
+        raw_firmware,
+        list(DISPATCH_RUNTIME_VALUES),
+        KNOWN_DISPATCH_SEEDS,
+    )
     candidate_windows = _build_candidate_windows(raw_firmware, compare_hits, seeded_compare_hits)
     string_windows = _build_string_windows(raw_firmware)
     dispatcher_hypothesis = infer_dispatcher_hypothesis()
@@ -155,6 +165,7 @@ def analyze_command35_path(
             "constant_cluster": constant_cluster,
             "string_pointer_tables": pointer_tables,
             "literal_pool_refs": literal_pool_refs,
+            "dispatcher_runtime_refs": dispatcher_runtime_refs,
             "dispatcher_hypothesis": dispatcher_hypothesis,
             "generic_parse_profiles": generic_parse_profiles,
             "candidate_dispatch_windows": [
@@ -194,6 +205,7 @@ def infer_dispatcher_hypothesis() -> dict[str, Any]:
         "generic_parse_entry_offset": 0x0DBE,
         "generic_parse_helper_call_offset": 0x0DC4,
         "generic_parse_helper_target": GENERIC_PARSE_HELPER_TARGET,
+        "generic_parse_input_source": "uxtb r0, r2",
         "direct_command_cases": {
             "0x32": {
                 "compare_offset": 0x0D90,
@@ -216,30 +228,43 @@ def infer_dispatcher_hypothesis() -> dict[str, Any]:
         ],
         "command_0x35_interpretation": (
             "0x35 currently looks more like a generic parser family member than a "
-            "direct top-level compare case."
+            "direct top-level compare case, and the helper is fed from r2 rather than "
+            "the original top-level command byte."
         ),
         "generic_parse_outputs": [
             "sp+0x0c length_or_count_a",
             "sp+0x10 length_or_count_b",
         ],
+        "contextual_function_hint": {
+            "window_start": 0x0D02,
+            "window_end": 0x0E0C,
+            "context_bytes_written": ["base+0x7d", "base+0x7e", "base+0x7f"],
+            "classification_helper": 0x888C,
+            "range_helpers": [0x7618, 0x7714],
+            "interpretation": (
+                "The surrounding function looks more like a UI or mode-state handler that "
+                "updates a bounded selector/context block before any deeper digital send path."
+            ),
+        },
     }
 
 
 def decode_generic_parse_profiles(raw_firmware: bytes) -> dict[str, Any]:
-    command_cases: dict[str, Any] = {}
-    for command in [0x04, 0x08, 0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x47]:
-        entry = raw_firmware[GENERIC_PARSE_DISPATCH_BASE + command]
+    subcode_cases: dict[str, Any] = {}
+    for subcode in [0x04, 0x08, 0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x47]:
+        entry = raw_firmware[GENERIC_PARSE_DISPATCH_BASE + subcode]
         target = GENERIC_PARSE_DISPATCH_BASE + entry * 2
         profile = {
             "jump_table_entry": entry,
             "target_offset": target,
             "derived_outputs": infer_generic_case_outputs(target),
         }
-        command_cases[f"0x{command:02X}"] = profile
+        subcode_cases[f"0x{subcode:02X}"] = profile
     return {
         "dispatch_base": GENERIC_PARSE_DISPATCH_BASE,
         "helper_target": GENERIC_PARSE_HELPER_TARGET,
-        "command_cases": command_cases,
+        "helper_input_is": "u8(r2)",
+        "subcode_cases": subcode_cases,
     }
 
 
@@ -504,6 +529,55 @@ def find_literal_pool_refs_to_values(
     return refs
 
 
+def find_literal_pool_refs_in_windows(
+    raw_firmware: bytes,
+    target_values: list[int],
+    centers: list[int],
+    *,
+    before: int = 128,
+    after: int = 128,
+) -> list[dict[str, Any]]:
+    if not target_values or not centers:
+        return []
+
+    wanted = set(target_values)
+    refs: list[dict[str, Any]] = []
+    seen_offsets: set[tuple[int, int]] = set()
+    md = Cs(CS_ARCH_ARM, CS_MODE_THUMB)
+    md.detail = True
+    for center in centers:
+        start = max(0, center - before)
+        end = min(len(raw_firmware), center + after)
+        for ins in md.disasm(raw_firmware[start:end], start):
+            if ins.mnemonic != "ldr" or len(ins.operands) < 2:
+                continue
+            src = ins.operands[1]
+            if src.type != ARM_OP_MEM or src.mem.base != ARM_REG_PC:
+                continue
+            literal_offset = ((ins.address + 4) & ~3) + src.mem.disp
+            if literal_offset < 0 or literal_offset + 4 > len(raw_firmware):
+                continue
+            loaded_value = int.from_bytes(raw_firmware[literal_offset:literal_offset + 4], "little")
+            if loaded_value not in wanted:
+                continue
+            key = (ins.address, loaded_value)
+            if key in seen_offsets:
+                continue
+            seen_offsets.add(key)
+            refs.append(
+                {
+                    "center_offset": center,
+                    "instruction_offset": ins.address,
+                    "instruction": f"{ins.mnemonic} {ins.op_str}".rstrip(),
+                    "literal_pool_offset": literal_offset,
+                    "loaded_value": loaded_value,
+                    "label": DISPATCH_RUNTIME_VALUES.get(loaded_value, f"{loaded_value:#010x}"),
+                }
+            )
+    refs.sort(key=lambda item: (item["instruction_offset"], item["loaded_value"]))
+    return refs
+
+
 def _read_short_ascii(raw_firmware: bytes, offset: int, *, max_len: int = 32) -> str:
     if offset < 0 or offset >= len(raw_firmware):
         return ""
@@ -566,6 +640,7 @@ def infer_command35_judgement(report: dict[str, Any]) -> dict[str, Any]:
     constant_cluster = report["firmware"].get("constant_cluster", {})
     pointer_tables = report["firmware"].get("string_pointer_tables", [])
     literal_pool_refs = report["firmware"].get("literal_pool_refs", [])
+    dispatcher_runtime_refs = report["firmware"].get("dispatcher_runtime_refs", [])
     replay = report["replay"]
 
     effective_35 = compare_hits.get("0x35") or seeded_compare_hits.get("0x35") or []
@@ -649,8 +724,8 @@ def infer_command35_judgement(report: dict[str, Any]) -> dict[str, Any]:
         summary_lines.append("当前还没有足够可靠的固件分发锚点，需要继续补充固件侧命令入口证据。")
 
     summary_lines.append(
-        "????????????0x35 ???????? cmp????? 0x32/0x33 ???????? "
-        "0x0DBE ????????? 0x0280 ?? helper ??????????"
+        "???????????????? 0x32 ???? 0x33 ?????? 0x0DBE ???????"
+        "?? 0x0280 ?? helper ? u8(r2) ??????????????????"
     )
 
     return {
@@ -684,6 +759,11 @@ def infer_command35_judgement(report: dict[str, Any]) -> dict[str, Any]:
             "ft8_mean_nonzero_bytes": replay["ft8"]["business_packet_nonzero_summary"]["mean"],
         },
         "raw_immediate_hint_0x35": immediate_hits.get("0x35", []),
+        "dispatcher_runtime_state_model": (
+            "generic_branch_looks_more_like_bounded_state_machine_than_full_symbol_stream"
+            if dispatcher_runtime_refs
+            else "not_enough_runtime_state_evidence"
+        ),
         "summary_lines": summary_lines,
     }
 
@@ -695,6 +775,7 @@ def render_command35_markdown(report: dict[str, Any]) -> str:
     constant_cluster = report["firmware"].get("constant_cluster", {})
     pointer_tables = report["firmware"].get("string_pointer_tables", [])
     literal_pool_refs = report["firmware"].get("literal_pool_refs", [])
+    dispatcher_runtime_refs = report["firmware"].get("dispatcher_runtime_refs", [])
     dispatcher_hypothesis = report["firmware"].get("dispatcher_hypothesis", {})
     generic_parse_profiles = report["firmware"].get("generic_parse_profiles", {})
     layout = report["digimanager"]["command35_layout"]
@@ -771,15 +852,23 @@ def render_command35_markdown(report: dict[str, Any]) -> str:
         lines.extend(f"  - `{item}`" for item in dispatcher_hypothesis["command_0x35_flow"])
         lines.append("- 通用 helper 输出位点：")
         lines.extend(f"  - `{item}`" for item in dispatcher_hypothesis["generic_parse_outputs"])
+        context_hint = dispatcher_hypothesis.get("contextual_function_hint", {})
+        if context_hint:
+            lines.append(
+                f"- 邻域函数窗口：`{context_hint['window_start']:#06x} ~ {context_hint['window_end']:#06x}`，"
+                f"更像 `{', '.join(context_hint['context_bytes_written'])}` 这类状态字节的更新器，"
+                f"并调用分类 helper `{context_hint['classification_helper']:#06x}` 与范围 helper "
+                f"`{', '.join(hex(item) for item in context_hint['range_helpers'])}`。"
+            )
     lines.append("")
     lines.append("## 通用 helper 跳表结果")
     if generic_parse_profiles:
         lines.append(
             f"- 跳表基址：`{generic_parse_profiles['dispatch_base']:#06x}`，helper：`{generic_parse_profiles['helper_target']:#06x}`"
         )
-        for command, profile in generic_parse_profiles.get("command_cases", {}).items():
+        for subcode, profile in generic_parse_profiles.get("subcode_cases", {}).items():
             lines.append(
-                f"- `{command}` -> target `{profile['target_offset']:#06x}` -> `{profile['derived_outputs']}`"
+                f"- `{subcode}` -> target `{profile['target_offset']:#06x}` -> `{profile['derived_outputs']}`"
             )
     lines.append("")
     lines.append("## 字符串指针表候选")
@@ -797,6 +886,15 @@ def render_command35_markdown(report: dict[str, Any]) -> str:
         lines.append(
             f"- `{item['instruction_offset']:#06x} {item['instruction']}` -> pool `{item['literal_pool_offset']:#06x}` => `{item['loaded_value']:#06x}`"
         )
+    lines.append("")
+    lines.append("## dispatcher 邻域里的运行时状态引用")
+    for item in dispatcher_runtime_refs[:16]:
+        lines.append(
+            f"- center `{item['center_offset']:#06x}`: `{item['instruction_offset']:#06x} {item['instruction']}` -> "
+            f"pool `{item['literal_pool_offset']:#06x}` => `{item['loaded_value']:#010x}` (`{item['label']}`)"
+        )
+    if not dispatcher_runtime_refs:
+        lines.append("- 未识别到邻域运行时状态引用。")
     lines.append("")
     lines.append("## 字符串锚点窗口")
     for item in report["firmware"]["string_anchor_windows"]:
