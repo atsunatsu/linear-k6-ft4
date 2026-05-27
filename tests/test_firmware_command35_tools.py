@@ -168,6 +168,40 @@ class FirmwareCommand35ToolsTests(unittest.TestCase):
             "generic_branch_looks_more_like_bounded_state_machine_than_full_symbol_stream",
         )
 
+    def test_real_assets_expose_dispatcher_helper_call_graph(self) -> None:
+        report = analyze_command35_path(
+            firmware_path=Path("reverse/input/firmware/cec_0.3QB.packed.bin"),
+            digimanager_path=Path("reverse/input/digimanager/UVK5DigManager.exe"),
+            ft4_replay_path=Path("samples/replay/ft4-replay.json"),
+            ft8_replay_path=Path("samples/replay/ft8-replay.json"),
+        )
+        helper_callers = report["firmware"]["helper_callers"]
+        self.assertIn(0x0DC4, helper_callers["0x0280"])
+        self.assertIn(0x0D7E, helper_callers["0x7618"])
+        self.assertIn(0x0E0C, helper_callers["0x7714"])
+        self.assertIn(0x0D34, helper_callers["0x888C"])
+        self.assertIn(0x0D4A, helper_callers["0x0BD0"])
+        self.assertEqual(
+            report["firmware"]["helper_semantics"]["0x7714"]["role"],
+            "search / selection helper",
+        )
+        self.assertEqual(
+            report["firmware"]["helper_semantics"]["0x888C"]["role"],
+            "table classifier",
+        )
+
+        window_callees = {item["target_offset"] for item in report["firmware"]["dispatcher_window_callees"]}
+        self.assertTrue({0x0280, 0x7618, 0x7714, 0x888C, 0x0BD0}.issubset(window_callees))
+        self.assertEqual(
+            report["judgement"]["dispatcher_helper_call_graph"]["0x0280"],
+            helper_callers["0x0280"],
+        )
+
+        context_hub_callees = {item["target_offset"] for item in report["firmware"]["context_hub_callees"]}
+        self.assertIn(0x7714, context_hub_callees)
+        self.assertIn(0x0564, helper_callers["0x76A8"])
+        self.assertTrue(any(item["center_offset"] == 0x04D6 for item in report["firmware"]["context_hub_windows"]))
+
 
 if __name__ == "__main__":  # pragma: no cover
     unittest.main()

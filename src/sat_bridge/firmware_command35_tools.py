@@ -53,6 +53,7 @@ DESCRIPTOR_INTERESTING_STRINGS = {
     "DCR",
 }
 KNOWN_DISPATCH_SEEDS = [3496]
+KNOWN_CONTEXT_HUB_SEEDS = [0x044E, 0x04D6, 0x0520]
 KNOWN_PUBLIC_OBCFUSCATION = bytes.fromhex("166c14e62e910d402135d5401303e980")
 GENERIC_PARSE_DISPATCH_BASE = 0x028E
 GENERIC_PARSE_HELPER_TARGET = 0x0280
@@ -141,10 +142,41 @@ def analyze_command35_path(
         list(DISPATCH_RUNTIME_VALUES),
         KNOWN_DISPATCH_SEEDS,
     )
+    dispatcher_window_callees = find_direct_callees_in_window(
+        raw_firmware,
+        start_offset=0x0D02,
+        end_offset=0x0E10,
+    )
+    context_hub_windows = _build_windows_for_centers(
+        raw_firmware,
+        centers=KNOWN_CONTEXT_HUB_SEEDS,
+        label_prefix="context_hub",
+        before=48,
+        after=96,
+    )
+    context_hub_callees = []
+    for center in KNOWN_CONTEXT_HUB_SEEDS:
+        context_hub_callees.extend(
+            find_direct_callees_in_window(
+                raw_firmware,
+                start_offset=max(0, center - 32),
+                end_offset=min(len(raw_firmware), center + 96),
+            )
+        )
     candidate_windows = _build_candidate_windows(raw_firmware, compare_hits, seeded_compare_hits)
     string_windows = _build_string_windows(raw_firmware)
     dispatcher_hypothesis = infer_dispatcher_hypothesis()
     generic_parse_profiles = decode_generic_parse_profiles(raw_firmware)
+    helper_targets = [0x0280, 0x75FC, 0x7618, 0x76A8, 0x7714, 0x7750, 0x888C, 0x7458, 0x0BD0]
+    helper_callers = find_bl_callers(raw_firmware, helper_targets)
+    for item in dispatcher_window_callees:
+        key = f"0x{item['target_offset']:04X}"
+        if key not in helper_callers:
+            continue
+        if item["call_offset"] not in helper_callers[key]:
+            helper_callers[key].append(item["call_offset"])
+            helper_callers[key].sort()
+    helper_semantics = infer_helper_semantics()
 
     report = {
         "inputs": {
@@ -166,8 +198,22 @@ def analyze_command35_path(
             "string_pointer_tables": pointer_tables,
             "literal_pool_refs": literal_pool_refs,
             "dispatcher_runtime_refs": dispatcher_runtime_refs,
+            "dispatcher_window_callees": dispatcher_window_callees,
+            "context_hub_windows": [
+                {
+                    "label": item.label,
+                    "center_offset": item.center_offset,
+                    "start_offset": item.start_offset,
+                    "end_offset": item.end_offset,
+                    "lines": item.lines,
+                }
+                for item in context_hub_windows
+            ],
+            "context_hub_callees": context_hub_callees,
             "dispatcher_hypothesis": dispatcher_hypothesis,
             "generic_parse_profiles": generic_parse_profiles,
+            "helper_callers": helper_callers,
+            "helper_semantics": helper_semantics,
             "candidate_dispatch_windows": [
                 {
                     "label": item.label,
@@ -268,6 +314,51 @@ def decode_generic_parse_profiles(raw_firmware: bytes) -> dict[str, Any]:
     }
 
 
+def find_bl_callers(raw_firmware: bytes, target_offsets: list[int]) -> dict[str, list[int]]:
+    targets = set(target_offsets)
+    callers: dict[str, list[int]] = {f"0x{target:04X}": [] for target in target_offsets}
+    md = Cs(CS_ARCH_ARM, CS_MODE_THUMB)
+    for ins in md.disasm(raw_firmware, 0):
+        if not ins.mnemonic.startswith("bl") or not ins.op_str.startswith("#0x"):
+            continue
+        try:
+            destination = int(ins.op_str[1:], 16)
+        except ValueError:
+            continue
+        # Capstone renders Thumb branch destinations with the low bit set. Normalize
+        # to even code offsets so we can match raw firmware offsets consistently.
+        destination &= ~1
+        if destination not in targets:
+            continue
+        callers[f"0x{destination:04X}"].append(ins.address)
+    return callers
+
+
+def find_direct_callees_in_window(
+    raw_firmware: bytes,
+    *,
+    start_offset: int,
+    end_offset: int,
+) -> list[dict[str, Any]]:
+    callees: list[dict[str, Any]] = []
+    md = Cs(CS_ARCH_ARM, CS_MODE_THUMB)
+    for ins in md.disasm(raw_firmware[start_offset:end_offset], start_offset):
+        if not ins.mnemonic.startswith("bl") or not ins.op_str.startswith("#0x"):
+            continue
+        try:
+            destination = int(ins.op_str[1:], 16) & ~1
+        except ValueError:
+            continue
+        callees.append(
+            {
+                "call_offset": ins.address,
+                "target_offset": destination,
+                "instruction": f"{ins.mnemonic} {ins.op_str}".rstrip(),
+            }
+        )
+    return callees
+
+
 def infer_generic_case_outputs(target_offset: int) -> dict[str, Any]:
     # This decoder is intentionally narrow: it only documents the currently
     # observed immediate-output stubs that feed the second-stage parser.
@@ -306,6 +397,35 @@ def infer_generic_case_outputs(target_offset: int) -> dict[str, Any]:
     if target_offset == 0x0344:
         return {"return": -1, "meaning_hint": "out-of-range / invalid command"}
     return {"meaning_hint": "unknown_case_stub"}
+
+
+def infer_helper_semantics() -> dict[str, dict[str, str]]:
+    return {
+        "0x0280": {
+            "role": "generic second-stage parser",
+            "reason": "Consumes u8(r2), uses a jump table, and only emits a tiny bounded class via stack outputs.",
+        },
+        "0x0BD0": {
+            "role": "state reset / mirror helper",
+            "reason": "Copies one byte from context+d8 to context+60, derives a bitmask, and clears nearby state bytes.",
+        },
+        "0x7618": {
+            "role": "bounded range remapper",
+            "reason": "Maps an input through a compact range table and clamps or folds the result.",
+        },
+        "0x76A8": {
+            "role": "value-class predicate",
+            "reason": "Checks whether a candidate value in the 0xA9.. range is acceptable for the current small state tuple.",
+        },
+        "0x7714": {
+            "role": "search / selection helper",
+            "reason": "Iterates candidate values until helper 0x76A8 accepts one, then returns the selected byte or 0xFF.",
+        },
+        "0x888C": {
+            "role": "table classifier",
+            "reason": "Indexes a compact table using one state byte and returns a class byte, not a symbol stream.",
+        },
+    }
 
 
 def write_command35_report(report: dict[str, Any], output_dir: Path) -> tuple[Path, Path]:
@@ -639,8 +759,11 @@ def infer_command35_judgement(report: dict[str, Any]) -> dict[str, Any]:
     digital_mode_strings = report["firmware"].get("digital_mode_strings", {})
     constant_cluster = report["firmware"].get("constant_cluster", {})
     pointer_tables = report["firmware"].get("string_pointer_tables", [])
-    literal_pool_refs = report["firmware"].get("literal_pool_refs", [])
     dispatcher_runtime_refs = report["firmware"].get("dispatcher_runtime_refs", [])
+    dispatcher_window_callees = report["firmware"].get("dispatcher_window_callees", [])
+    helper_callers = report["firmware"].get("helper_callers", {})
+    helper_semantics = report["firmware"].get("helper_semantics", {})
+    helper_semantics = report["firmware"].get("helper_semantics", {})
     replay = report["replay"]
 
     effective_35 = compare_hits.get("0x35") or seeded_compare_hits.get("0x35") or []
@@ -671,14 +794,14 @@ def infer_command35_judgement(report: dict[str, Any]) -> dict[str, Any]:
     ]
     if has_stx and has_etx:
         summary_lines.append(
-            f"真实固件里能直接找到和 DigiManager 完全一致的 4 字节帧头/帧尾常量，位置分别在 "
-            f"{', '.join(hex(item) for item in frame_matches['stx_offsets'])} / "
+            "真实固件里能直接找到和 DigiManager 完全一致的 4 字节帧头/帧尾常量，"
+            f"位置分别在 {', '.join(hex(item) for item in frame_matches['stx_offsets'])} / "
             f"{', '.join(hex(item) for item in frame_matches['etx_offsets'])}。"
         )
     if has_obfuscation:
         summary_lines.append(
-            f"真实固件里还能找到和公开 uart.c 一样的 16 字节扰码表，位置在 "
-            f"{', '.join(hex(item) for item in frame_matches['obfuscation_offsets'])}，"
+            "真实固件里还能找到和公开 uart.c 一样的 16 字节扰码表，"
+            f"位置在 {', '.join(hex(item) for item in frame_matches['obfuscation_offsets'])}，"
             "说明它更像同一家族协议，而不是完全不同的无线侧实现。"
         )
     if has_ft8_string and not has_ft4_string:
@@ -686,7 +809,11 @@ def infer_command35_judgement(report: dict[str, Any]) -> dict[str, Any]:
             "真实固件里能看到 FT8/APRS/WSPR 等数字模式字符串，但当前还看不到 FT4 字样，"
             "这更像是固件公开知道 FT8 类路径，而 FT4 可能只是被挤进现有数字发送链。"
         )
-    cluster_ascii = [item.get("points_to_ascii") for item in constant_cluster.get("entries", []) if item.get("points_to_ascii")]
+    cluster_ascii = [
+        item.get("points_to_ascii")
+        for item in constant_cluster.get("entries", [])
+        if item.get("points_to_ascii")
+    ]
     if {"FM", "CT", "DCS", "DCR"}.issubset(set(cluster_ascii)):
         summary_lines.append(
             "在 `0xDE94` 附近还能看到一个混合常量簇，前半段是 `FM/CT/DCS/DCR` 字符串指针，"
@@ -697,6 +824,17 @@ def infer_command35_judgement(report: dict[str, Any]) -> dict[str, Any]:
         summary_lines.append(
             "真实固件里还能识别出多张字符串指针表，其中至少有一部分被真实代码通过 "
             "PC 相对 literal pool 引用，说明固件很可能大量依赖表驱动的模式/设置描述结构。"
+        )
+    if dispatcher_window_callees:
+        callee_set = {item["target_offset"] for item in dispatcher_window_callees}
+        if {0x0280, 0x7618, 0x7714, 0x888C, 0x0BD0}.issubset(callee_set):
+            summary_lines.append(
+                "以 `0x0D02~0x0E0C` 为中心的同一函数同时调用了 `0x0280`、`0x7618`、`0x7714`、`0x888C` 和 `0x0BD0`，"
+                "更像上层模式/范围/分类状态机，而不像最终数字发送器。"
+            )
+    if helper_semantics.get("0x7714") and helper_semantics.get("0x888C"):
+        summary_lines.append(
+            "目前已确认的 helper 语义也支持这一点：`0x888C` 更像表分类器，`0x7714` 更像搜索/选择器，都不像最终符号发射器。"
         )
     if has_direct_35:
         summary_lines.extend(
@@ -724,8 +862,8 @@ def infer_command35_judgement(report: dict[str, Any]) -> dict[str, Any]:
         summary_lines.append("当前还没有足够可靠的固件分发锚点，需要继续补充固件侧命令入口证据。")
 
     summary_lines.append(
-        "???????????????? 0x32 ???? 0x33 ?????? 0x0DBE ???????"
-        "?? 0x0280 ?? helper ? u8(r2) ??????????????????"
+        "当前最可信的解释是：0x35 会先落入 0x32/0x33 邻近的通用分支，再由 0x0280 这种二级 helper 做分类，"
+        "而不是一开始就进入最终数字发送层。"
     )
 
     return {
@@ -764,6 +902,7 @@ def infer_command35_judgement(report: dict[str, Any]) -> dict[str, Any]:
             if dispatcher_runtime_refs
             else "not_enough_runtime_state_evidence"
         ),
+        "dispatcher_helper_call_graph": helper_callers,
         "summary_lines": summary_lines,
     }
 
@@ -776,15 +915,18 @@ def render_command35_markdown(report: dict[str, Any]) -> str:
     pointer_tables = report["firmware"].get("string_pointer_tables", [])
     literal_pool_refs = report["firmware"].get("literal_pool_refs", [])
     dispatcher_runtime_refs = report["firmware"].get("dispatcher_runtime_refs", [])
+    dispatcher_window_callees = report["firmware"].get("dispatcher_window_callees", [])
+    context_hub_windows = report["firmware"].get("context_hub_windows", [])
+    context_hub_callees = report["firmware"].get("context_hub_callees", [])
     dispatcher_hypothesis = report["firmware"].get("dispatcher_hypothesis", {})
     generic_parse_profiles = report["firmware"].get("generic_parse_profiles", {})
+    helper_callers = report["firmware"].get("helper_callers", {})
+    helper_semantics = report["firmware"].get("helper_semantics", {})
     layout = report["digimanager"]["command35_layout"]
-    lines = [
-        "# 真实 0.3q 中 `command 0x35` 处理路径分析",
-        "",
-        "## 当前结论",
-    ]
+
+    lines = ["# 真实 0.3q 中 `command 0x35` 处理路径分析", "", "## 当前结论"]
     lines.extend(f"- {item}" for item in judgement["summary_lines"])
+
     lines.extend(
         [
             "",
@@ -797,6 +939,7 @@ def render_command35_markdown(report: dict[str, Any]) -> str:
         ]
     )
     lines.extend(f"  - {item}" for item in layout["layout"])
+
     lines.extend(
         [
             "",
@@ -839,6 +982,7 @@ def render_command35_markdown(report: dict[str, Any]) -> str:
         lines.append(f"### {item['label']} @ {item['center_offset']:#06x}")
         lines.extend(f"- `{line}`" for line in item["lines"])
         lines.append("")
+
     lines.append("## `0x35` 通用分支推断")
     if dispatcher_hypothesis:
         lines.append(f"- 根分发区：`{dispatcher_hypothesis['dispatcher_root_offset']:#06x}`")
@@ -861,6 +1005,7 @@ def render_command35_markdown(report: dict[str, Any]) -> str:
                 f"`{', '.join(hex(item) for item in context_hint['range_helpers'])}`。"
             )
     lines.append("")
+
     lines.append("## 通用 helper 跳表结果")
     if generic_parse_profiles:
         lines.append(
@@ -871,6 +1016,43 @@ def render_command35_markdown(report: dict[str, Any]) -> str:
                 f"- `{subcode}` -> target `{profile['target_offset']:#06x}` -> `{profile['derived_outputs']}`"
             )
     lines.append("")
+
+    lines.append("## dispatcher 同窗函数的直接 helper 调用")
+    for item in dispatcher_window_callees:
+        lines.append(
+            f"- `{item['call_offset']:#06x}`: `{item['instruction']}` -> `{item['target_offset']:#06x}`"
+        )
+    if not dispatcher_window_callees:
+        lines.append("- 未识别到 dispatcher 窗口内的直接 helper 调用。")
+    lines.append("")
+
+    lines.append("## 更接近上下文消费层的候选窗口")
+    for item in context_hub_windows:
+        lines.append(f"### {item['label']} @ {item['center_offset']:#06x}")
+        lines.extend(f"- `{line}`" for line in item["lines"])
+        lines.append("")
+    lines.append("## 上下文消费层的直接 helper 调用")
+    for item in context_hub_callees:
+        lines.append(
+            f"- `{item['call_offset']:#06x}`: `{item['instruction']}` -> `{item['target_offset']:#06x}`"
+        )
+    if not context_hub_callees:
+        lines.append("- 未识别到上下文消费层的直接 helper 调用。")
+    lines.append("")
+
+    lines.append("## 关键 helper 的全局调用者")
+    for key, callers in helper_callers.items():
+        rendered = ", ".join(f"{item:#06x}" for item in callers) if callers else "无直接 bl 命中"
+        lines.append(f"- `{key}` <- {rendered}")
+    lines.append("")
+
+    if helper_semantics:
+        lines.append("## 关键 helper 的当前语义判断")
+        for key, item in helper_semantics.items():
+            lines.append(f"- `{key}`：`{item['role']}`")
+            lines.append(f"  - {item['reason']}")
+        lines.append("")
+
     lines.append("## 字符串指针表候选")
     for item in pointer_tables[:8]:
         lines.append(
@@ -881,12 +1063,14 @@ def render_command35_markdown(report: dict[str, Any]) -> str:
                 f"- `{entry['entry_offset']:#06x}` -> `{entry['text']}` (str @ {entry['string_offset']:#06x}, tag={entry['tag_value']:#x})"
             )
         lines.append("")
+
     lines.append("## 指向这些表的 literal pool 引用")
     for item in literal_pool_refs[:12]:
         lines.append(
             f"- `{item['instruction_offset']:#06x} {item['instruction']}` -> pool `{item['literal_pool_offset']:#06x}` => `{item['loaded_value']:#06x}`"
         )
     lines.append("")
+
     lines.append("## dispatcher 邻域里的运行时状态引用")
     for item in dispatcher_runtime_refs[:16]:
         lines.append(
@@ -896,11 +1080,13 @@ def render_command35_markdown(report: dict[str, Any]) -> str:
     if not dispatcher_runtime_refs:
         lines.append("- 未识别到邻域运行时状态引用。")
     lines.append("")
+
     lines.append("## 字符串锚点窗口")
     for item in report["firmware"]["string_anchor_windows"]:
         lines.append(f"### {item['label']} @ {item['center_offset']:#06x}")
         lines.extend(f"- `{line}`" for line in item["lines"])
         lines.append("")
+
     lines.append("## 当前建议")
     if judgement["firmware_direct_cmp_0x35"] == "yes":
         lines.append("- 继续围绕直接命中的 `cmp ..., #0x35` 候选点向下追，确认它后面如何进入数字模式发送路径。")
@@ -908,9 +1094,8 @@ def render_command35_markdown(report: dict[str, Any]) -> str:
         lines.append("- 之前扫出来的 `0x32 / 0x33` 命中点没有通过局部反汇编复验，当前应把它们视为低可信提示，不再继续沿它们做强结论。")
         lines.append("- 下一步改为优先追 `0xDE94 ~ 0xDEBC` 常量簇和 `FT8 / APRS / WSPR` 等模式字符串的真实代码引用。")
     else:
-        lines.append("- 当前还没有可靠的命令分发锚点，优先去找 `0xDE94 ~ 0xDEBC` 常量簇和模式字符串的真实代码引用。")
-    lines.append("- 这轮新增的重点是：优先跟踪‘字符串指针表 -> PC 相对 literal pool -> 真实代码入口’这条链，而不是再依赖全镜像线性反汇编扫出来的单点命中。")
-    lines.append("- 优先把 `0xDE94 ~ 0xDEBC` 这块常量簇当成同协议家族常量区继续追引用，因为这里同时出现了模式字符串指针、帧头、帧尾和数字模式相关参数。")
+        lines.append("- 当前最值得继续追的是：谁真正消费 `0x20000094` 与 `0x20000740` 这两个状态块，并把它们带入更深的数字发送层。")
+    lines.append("- 当前不应把 `0x0DBE -> 0x0280` 这段误当成最终发射器；它更像进入真正数字发送层前的状态分类与范围约束。")
     lines.append("- 如果后续需要现场验证，优先考虑串口层抓到实际 `0x35` 帧，再反推固件 parser。")
     return "\n".join(lines) + "\n"
 
@@ -1040,6 +1225,26 @@ def _build_string_windows(raw_firmware: bytes) -> list[CapstoneWindow]:
             continue
         windows.append(_disassemble_window(raw_firmware, offset, label=f"string_anchor_{anchor}"))
     return windows
+
+
+def _build_windows_for_centers(
+    raw_firmware: bytes,
+    *,
+    centers: list[int],
+    label_prefix: str,
+    before: int = 96,
+    after: int = 96,
+) -> list[CapstoneWindow]:
+    return [
+        _disassemble_window(
+            raw_firmware,
+            center,
+            label=f"{label_prefix}_{center:#06x}",
+            before=before,
+            after=after,
+        )
+        for center in centers
+    ]
 
 
 def _disassemble_window(raw_firmware: bytes, center_offset: int, *, label: str, before: int = 96, after: int = 96) -> CapstoneWindow:
